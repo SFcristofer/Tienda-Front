@@ -1,35 +1,67 @@
 import { gql } from '@apollo/client';
 
-export const REGISTER_USER = gql`
-  mutation RegisterUser($name: String!, $email: String!, $password: String!) {
-    registerUser(name: $name, email: $email, password: $password)
-  }
-`;
-
-export const LOGIN_USER = gql`
-  mutation LoginUser($email: String!, $password: String!) {
-    loginUser(email: $email, password: $password)
+export const GOOGLE_LOGIN = gql`
+  mutation GoogleLogin($idToken: String!) {
+    googleLogin(idToken: $idToken)
   }
 `;
 
 export const CREATE_STORE = gql`
-  mutation CreateStore($name: String!, $description: String!, $imageUrl: String) {
-    createStore(name: $name, description: $description, imageUrl: $imageUrl) {
+  mutation CreateStore(
+    $name: String!
+    $description: String!
+    $imageUrl: String
+    $street: String
+    $city: String!
+    $state: String!
+    $zipCode: String!
+    $country: String
+    $phoneNumber: String!
+    $contactEmail: String!
+    $storeCategoryIds: [ID!]
+  ) {
+    createStore(
+      name: $name
+      description: $description
+      imageUrl: $imageUrl
+      street: $street
+      city: $city
+      state: $state
+      zipCode: $zipCode
+      country: $country
+      phoneNumber: $phoneNumber
+      contactEmail: $contactEmail
+      storeCategoryIds: $storeCategoryIds
+    ) {
       id
       name
       description
       imageUrl
+      street
+      city
+      state
+      zipCode
+      country
+      phoneNumber
+      contactEmail
     }
   }
 `;
 
 export const UPDATE_STORE = gql`
-  mutation UpdateStore($id: ID!, $name: String, $description: String, $imageUrl: String) {
-    updateStore(id: $id, name: $name, description: $description, imageUrl: $imageUrl) {
+  mutation UpdateStore($id: ID!, $name: String, $description: String, $imageUrl: String, $street: String, $city: String, $state: String, $zipCode: String, $country: String, $phoneNumber: String, $contactEmail: String) {
+    updateStore(id: $id, name: $name, description: $description, imageUrl: $imageUrl, street: $street, city: $city, state: $state, zipCode: $zipCode, country: $country, phoneNumber: $phoneNumber, contactEmail: $contactEmail) {
       id
       name
       description
       imageUrl
+      street
+      city
+      state
+      zipCode
+      country
+      phoneNumber
+      contactEmail
     }
   }
 `;
@@ -99,13 +131,35 @@ export const DELETE_PRODUCT = gql`
 `;
 
 export const UPDATE_USER = gql`
-  mutation UpdateUser($id: ID!, $name: String, $email: String, $password: String) {
-    updateUser(id: $id, name: $name, email: $email, password: $password) {
+  mutation UpdateUser($name: String, $email: String, $password: String, $phoneNumber: String) {
+    updateUser(name: $name, email: $email, password: $password, phoneNumber: $phoneNumber) {
       id
       name
       email
+      phoneNumber
       role
     }
+  }
+`;
+
+export const REGISTER_USER = gql`
+  mutation RegisterUser($name: String!, $email: String!, $password: String!, $phoneNumber: String) {
+    registerUser(name: $name, email: $email, password: $password, phoneNumber: $phoneNumber)
+  }
+`;
+
+export const UPDATE_USER_AVATAR = gql`
+  mutation UpdateUserAvatar($avatar: String!) {
+    updateUserAvatar(avatar: $avatar) {
+      id
+      avatarUrl
+    }
+  }
+`;
+
+export const UPLOAD_IMAGE = gql`
+  mutation UploadImage($base64Image: String!) {
+    uploadImage(base64Image: $base64Image)
   }
 `;
 
@@ -210,6 +264,28 @@ export const CLEAR_CART = gql`
   }
 `;
 
+export const REMOVE_ITEMS_FROM_CART = gql`
+  mutation RemoveItemsFromCart($productIds: [ID!]!) {
+    removeItemsFromCart(productIds: $productIds) {
+      id
+      items {
+        id
+        quantity
+        product {
+          id
+          name
+          price
+          imageUrl
+          store {
+            id
+            name
+          }
+        }
+      }
+    }
+  }
+`;
+
 export const CREATE_ADDRESS = gql`
   mutation CreateAddress($input: CreateAddressInput!) {
     createAddress(input: $input) {
@@ -272,10 +348,7 @@ export const DELETE_PAYMENT_METHOD = gql`
 
 export const BECOME_SELLER = gql`
   mutation BecomeSeller {
-    becomeSeller {
-      id
-      role
-    }
+    becomeSeller
   }
 `;
 
@@ -311,12 +384,6 @@ export const REQUEST_PASSWORD_RESET = gql`
 export const RESET_PASSWORD = gql`
   mutation ResetPassword($token: String!, $newPassword: String!) {
     resetPassword(token: $token, newPassword: $newPassword)
-  }
-`;
-
-export const VERIFY_EMAIL = gql`
-  mutation VerifyEmail($token: String!) {
-    verifyEmail(token: $token)
   }
 `;
 
@@ -391,5 +458,44 @@ export const ADMIN_UPDATE_PRODUCT_STATUS = gql`
       name
       status
     }
+  }
+`;
+
+export const MARK_NOTIFICATION_AS_READ_MUTATION = gql`
+  mutation MarkNotificationAsRead($id: ID!) {
+    markNotificationAsRead(id: $id) {
+      id
+      isRead
+    }
+  }
+`;
+
+export const MARK_ALL_NOTIFICATIONS_AS_READ_MUTATION = gql`
+  mutation MarkAllNotificationsAsRead {
+    markAllNotificationsAsRead
+  }
+`;
+
+export const ADMIN_CREATE_STORE_CATEGORY = gql`
+  mutation AdminCreateStoreCategory($name: String!) {
+    adminCreateStoreCategory(name: $name) {
+      id
+      name
+    }
+  }
+`;
+
+export const ADMIN_UPDATE_STORE_CATEGORY = gql`
+  mutation AdminUpdateStoreCategory($id: ID!, $name: String!) {
+    adminUpdateStoreCategory(id: $id, name: $name) {
+      id
+      name
+    }
+  }
+`;
+
+export const ADMIN_DELETE_STORE_CATEGORY = gql`
+  mutation AdminDeleteStoreCategory($id: ID!) {
+    adminDeleteStoreCategory(id: $id)
   }
 `;

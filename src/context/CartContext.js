@@ -6,6 +6,7 @@ import {
   REMOVE_FROM_CART,
   UPDATE_CART_ITEM_QUANTITY,
   CLEAR_CART,
+  REMOVE_ITEMS_FROM_CART, // Import new mutation
 } from '../graphql/mutations';
 
 const CartContext = createContext();
@@ -21,6 +22,7 @@ export const CartProvider = ({ children }) => {
     onCompleted: () => refetch(),
   });
   const [clearCartMutation] = useMutation(CLEAR_CART, { onCompleted: () => refetch() });
+  const [removeItemsFromCartMutation] = useMutation(REMOVE_ITEMS_FROM_CART, { onCompleted: () => refetch() }); // New mutation hook
 
   const cartItems = data?.myCart?.items || [];
 
@@ -36,8 +38,14 @@ export const CartProvider = ({ children }) => {
     await updateQuantityMutation({ variables: { productId, quantity: parseInt(quantity) } });
   };
 
-  const clearCart = async () => {
+  const clearEntireCart = async () => {
     await clearCartMutation();
+  };
+
+  const removePurchasedItems = async (productIds) => {
+    if (productIds && productIds.length > 0) {
+      await removeItemsFromCartMutation({ variables: { productIds } });
+    }
   };
 
   const getTotalItems = () => {
@@ -60,26 +68,32 @@ export const CartProvider = ({ children }) => {
 
   const getGroupedCartItemsByStore = () => {
     const groupedItems = {};
-    console.log('Cart Items for grouping:', cartItems);
+    console.log('--- CartContext Debug: getGroupedCartItemsByStore ---');
+    console.log('Initial cartItems:', cartItems);
+
     cartItems.forEach((item) => {
-      if (item.product && item.product.store) {
-        const storeId = item.product.store.id;
-        console.log(`Processing item: ${item.product.name}, Product Store ID: ${item.product.store.id}, Grouping Store ID: ${storeId}`);
-        if (!groupedItems[storeId]) {
-          groupedItems[storeId] = {
-            store: item.product.store,
-            items: [],
-            totalAmount: 0,
-          };
-          console.log(`Created new group for store: ${item.product.store.name} (ID: ${storeId})`);
-        }
-        groupedItems[storeId].items.push(item);
-        groupedItems[storeId].totalAmount += item.quantity * item.product.price;
-      } else {
+      // Defensive checks for product and store existence
+      if (!item || !item.product || !item.product.store || !item.product.store.id) {
         console.warn('Skipping item due to missing product or store information:', item);
+        return; // Skip this item if essential data is missing
       }
+
+      const storeId = item.product.store.id;
+      console.log(`Processing item: ${item.product.name} (ID: ${item.product.id}), Product Store ID: ${item.product.store.id}, Grouping under Store ID: ${storeId}`);
+
+      if (!groupedItems[storeId]) {
+        groupedItems[storeId] = {
+          store: item.product.store,
+          items: [],
+          totalAmount: 0,
+        };
+        console.log(`Created new group for store: ${item.product.store.name} (ID: ${storeId})`);
+      }
+      groupedItems[storeId].items.push(item);
+      groupedItems[storeId].totalAmount += item.quantity * item.product.price;
     });
-    console.log('Grouped Items result:', groupedItems);
+    console.log('Final groupedItems result:', groupedItems);
+    console.log('--------------------------------------------------');
     return Object.values(groupedItems);
   };
 
@@ -90,13 +104,14 @@ export const CartProvider = ({ children }) => {
         addToCart,
         removeFromCart,
         updateQuantity,
-        clearCart,
+        clearEntireCart, // Renamed for clarity
+        removePurchasedItems, // New function
         getTotalItems,
         getTotalPrice,
         getFormattedCartItems,
-        getGroupedCartItemsByStore, // Nueva función expuesta
-        loading, // Exponer el estado de carga
-        error, // Exponer el estado de error
+        getGroupedCartItemsByStore,
+        loading,
+        error,
       }}
     >
       {children}

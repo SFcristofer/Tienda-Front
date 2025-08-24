@@ -1,369 +1,201 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useApolloClient } from '@apollo/client';
-import {
-  TextField,
-  Button,
-  Typography,
-  Box,
-  Paper,
-  CircularProgress,
-  Alert,
-  List,
-  ListItem,
-  ListItemText,
-  Snackbar,
-  Skeleton,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Card,
-  CardContent,
-  Grid,
-  CardMedia,
-  Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Tabs,
-  Tab,
-  Input,
-  CardActions,
-} from '@mui/material';
+import { useQuery, useMutation } from '@apollo/client';
+import { useTranslation } from 'react-i18next';
+import { TextField, Button, Typography, Box, Paper, CircularProgress, Alert, List, ListItem, ListItemText, Snackbar, Select, MenuItem, FormControl, InputLabel, Card, CardContent, Grid, CardMedia, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Tabs, Tab, CardActions, AlertTitle } from '@mui/material'; // Add AlertTitle
+import WarningIcon from '@mui/icons-material/Warning'; // Add WarningIcon
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { Link } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
-import { GET_MY_STORE, GET_SELLER_ORDERS, GET_ALL_CATEGORIES } from '../graphql/queries';
-import {
-  CREATE_STORE,
-  CREATE_PRODUCT,
-  UPDATE_ORDER_STATUS,
-  UPDATE_STORE,
-  UPDATE_PRODUCT,
-  DELETE_PRODUCT,
-} from '../graphql/mutations';
+import { GET_MY_STORE, GET_SELLER_ORDERS, GET_ALL_CATEGORIES, GET_ALL_STORE_CATEGORIES, GET_ALL_STORES } from '../graphql/queries';
+import { CREATE_STORE, CREATE_PRODUCT, UPDATE_ORDER_STATUS, UPDATE_STORE, UPDATE_PRODUCT, DELETE_PRODUCT, UPLOAD_IMAGE } from '../graphql/mutations';
+
+import ProductForm from './ProductForm';
 
 const SellerDashboard = () => {
-  const token = localStorage.getItem('token');
-  const client = useApolloClient();
-
-  const finalStatuses = ['payment_confirmed', 'delivered_payment_received', 'cancelled'];
-
-  // State for forms
-  const [storeName, setStoreName] = useState('');
-  const [storeDescription, setStoreDescription] = useState('');
-  const [storeNameError, setStoreNameError] = useState('');
-  const [storeDescriptionError, setStoreDescriptionError] = useState('');
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-    control,
-  } = useForm();
-
-  const [productImageUrl, setProductImageUrl] = useState('');
-  const [productImageFile, setProductImageFile] = useState(null);
-  const [productImageFileName, setProductImageFileName] = useState('');
-
-  // State for product editing dialog
-  const [openEditProductDialog, setOpenEditProductDialog] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
-  const [editProductName, setEditProductName] = useState('');
-  const [editProductDescription, setEditProductDescription] = useState('');
-  const [editProductPrice, setEditProductPrice] = useState('');
-  const [editProductImageUrl, setEditProductImageUrl] = useState('');
-  const [editProductStock, setEditProductStock] = useState('');
-  const [editProductCategoryId, setEditProductCategoryId] = useState('');
-
-  const handleProductImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setProductImageFileName(file.name);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProductImageUrl(reader.result);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      setProductImageFileName('');
-      setProductImageUrl('');
-    }
-  };
-
-  // Tab state
+  const { t } = useTranslation();
+  const { register, handleSubmit, formState: { errors }, reset, control } = useForm();
   const [tabValue, setTabValue] = useState(0);
-  const handleTabChange = (event, newValue) => {
-    setTabValue(newValue);
-    if (newValue === 2) {
-      refetchOrders();
-    }
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [selectedStoreCategories, setSelectedStoreCategories] = useState([]);
+
+  const [openAddProductModal, setOpenAddProductModal] = useState(false); // New state for add product modal
+
+  const handleOpenAddProductModal = () => { // New handler
+    setOpenAddProductModal(true);
+    reset(); // Reset react-hook-form fields
+    setProductImageUrl(''); // Clear image preview
+    setProductImageFileName(''); // Clear image file name
   };
 
-  // Snackbar state
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const handleCloseAddProductModal = () => { // New handler
+    setOpenAddProductModal(false);
+  };
 
-  // State for store editing dialog
+  const [storeData, setStoreData] = useState({
+    name: '',
+    description: '',
+    imageUrl: '',
+    street: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    country: '',
+    phoneNumber: '',
+    contactEmail: '',
+  });
+
+  const { data: storeDataDb, loading: loadingStore, error: errorStore, refetch: refetchStore } = useQuery(GET_MY_STORE, { fetchPolicy: 'network-only' });
+
+  const [storeImageFileName, setStoreImageFileName] = useState('');
   const [openEditStoreDialog, setOpenEditStoreDialog] = useState(false);
   const [editStoreName, setEditStoreName] = useState('');
   const [editStoreDescription, setEditStoreDescription] = useState('');
+  const [editStoreImageUrl, setEditStoreImageUrl] = useState('');
+  const [editStoreImageFileName, setEditStoreImageFileName] = useState('');
+  const [editStoreStreet, setEditStoreStreet] = useState('');
+  const [editStoreCity, setEditStoreCity] = useState('');
+  const [editStoreState, setEditStoreState] = useState('');
+  const [editStoreZipCode, setEditStoreZipCode] = useState('');
+  const [editStoreCountry, setEditStoreCountry] = useState('');
+  const [editStorePhoneNumber, setEditStorePhoneNumber] = useState('');
+  const [editStoreContactEmail, setEditStoreContactEmail] = useState('');
 
-  // Queries
-  const {
-    data: storeData,
-    loading: loadingStore,
-    error: errorStore,
-    refetch: refetchStore,
-  } = useQuery(GET_MY_STORE, { skip: !token, fetchPolicy: 'network-only' });
-  const store = storeData?.me?.store;
-  const {
-    data: ordersData,
-    loading: loadingOrders,
-    error: errorOrders,
-    refetch: refetchOrders,
-  } = useQuery(GET_SELLER_ORDERS, { skip: !token || !store, fetchPolicy: 'network-only' });
-  const {
-    data: categoriesData,
-    loading: loadingCategories,
-    error: errorCategories,
-  } = useQuery(GET_ALL_CATEGORIES);
-
-  // Mutations
-  const [createStore] = useMutation(CREATE_STORE, {
-    onCompleted: async () => {
-      await refetchStore();
-      setSnackbarMessage('Store created successfully!');
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-    },
-    onError: (error) => {
-      setSnackbarMessage('Error creating store. Please try again.');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    },
-  });
-  const [createProduct] = useMutation(CREATE_PRODUCT, {
-    onCompleted: async () => {
-      await refetchStore();
-      setSnackbarMessage('Product created successfully!');
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-    },
-    onError: (error) => {
-      setSnackbarMessage('Error creating product. Please try again.');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    },
-  });
-  const [updateStore] = useMutation(UPDATE_STORE, {
-    refetchQueries: [{ query: GET_MY_STORE }],
-    onCompleted: async () => {
-      setSnackbarMessage('Store updated successfully!');
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-      setOpenEditStoreDialog(false);
-    },
-    onError: (error) => {
-      setSnackbarMessage('Error updating store. Please try again.');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    },
-  });
-  const [updateOrderStatus] = useMutation(UPDATE_ORDER_STATUS, {
-    onCompleted: async () => {
-      await refetchOrders();
-      setSnackbarMessage('Order status updated successfully!');
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-    },
-    onError: (error) => {
-      setSnackbarMessage('Error updating order status. Please try again.');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    },
-  });
-
-  const [updateProduct] = useMutation(UPDATE_PRODUCT, {
-    onCompleted: async () => {
-      await refetchStore();
-      setSnackbarMessage('Product updated successfully!');
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-      setOpenEditProductDialog(false);
-    },
-    onError: (error) => {
-      setSnackbarMessage('Error updating product. Please try again.');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    },
-  });
-
-  const [deleteProduct] = useMutation(DELETE_PRODUCT, {
-    onCompleted: async () => {
-      await refetchStore();
-      setSnackbarMessage('Product deleted successfully!');
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-    },
-    onError: (error) => {
-      setSnackbarMessage('Error deleting product. Please try again.');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    },
-  });
-
-  const handleCreateStore = async (e) => {
-    e.preventDefault();
-    let valid = true;
-    if (!storeName.trim()) {
-      setStoreNameError('Store name is required.');
-      valid = false;
-    } else {
-      setStoreNameError('');
-    }
-    if (!storeDescription.trim()) {
-      setStoreDescriptionError('Store description is required.');
-      valid = false;
-    } else {
-      setStoreDescriptionError('');
-    }
-
-    if (!valid) return;
-
-    try {
-      await createStore({ variables: { name: storeName, description: storeDescription } });
-      setStoreName('');
-      setStoreDescription('');
-    } catch (err) {
-      console.error('Error creating store:', err);
+  const handleEditStoreImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setEditStoreImageFileName(file.name);
+      const reader = new FileReader();
+      reader.onloadend = () => setEditStoreImageUrl(reader.result);
+      reader.readAsDataURL(file);
     }
   };
 
-  const handleCreateProduct = handleSubmit(async (data) => {
-    try {
-      await createProduct({
-        variables: {
-          name: data.productName,
-          description: data.productDescription,
-          price: data.productPrice,
-          storeId: storeData.me.store.id,
-          imageUrl: productImageUrl,
-          categoryId: data.categoryId,
-          stock: data.productStock,
-        },
-      });
-      reset();
-      setProductImageUrl('');
-      setProductImageFileName('');
-    } catch (err) {
-      console.error('Error creating product:', err);
-    }
-  });
-
-  const [openStatusConfirmDialog, setOpenStatusConfirmDialog] = useState(false);
-  const [statusConfirmDetails, setStatusConfirmDetails] = useState({ orderId: null, newStatus: null });
-
-  const handleOpenStatusConfirmDialog = (orderId, newStatus) => {
-    setStatusConfirmDetails({ orderId, newStatus });
-    setOpenStatusConfirmDialog(true);
-  };
-
-  const handleCloseStatusConfirmDialog = () => {
-    setOpenStatusConfirmDialog(false);
-    setStatusConfirmDetails({ orderId: null, newStatus: null });
-  };
-
-  const handleConfirmStatusChange = async () => {
-    const { orderId, newStatus } = statusConfirmDetails;
-    try {
-      await updateOrderStatus({ variables: { orderId, status: newStatus } });
-      handleCloseStatusConfirmDialog();
-    } catch (err) {
-      console.error('Error updating order status:', err);
-      handleCloseStatusConfirmDialog();
-    }
-  };
-
-  const handleOrderStatusChange = async (orderId, newStatus) => {
-    const finalStatuses = ['payment_confirmed', 'delivered_payment_received', 'cancelled'];
-
-    if (finalStatuses.includes(newStatus)) {
-      handleOpenStatusConfirmDialog(orderId, newStatus);
-    } else {
-      try {
-        await updateOrderStatus({ variables: { orderId, status: newStatus } });
-      } catch (err) {
-        console.error('Error updating order status:', err);
-      }
-    }
-  };
-
-  const handleUpdateProduct = async () => {
-    try {
-      await updateProduct({
-        variables: {
-          id: editingProduct.id,
-          name: editProductName,
-          description: editProductDescription,
-          price: parseFloat(editProductPrice),
-          imageUrl: editProductImageUrl,
-          stock: parseInt(editProductStock),
-          categoryId: editProductCategoryId,
-        },
-      });
-    } catch (err) {
-      console.error('Error updating product:', err);
-    }
-  };
-
+  const [productImageUrl, setProductImageUrl] = useState('');
+  const [productImageFileName, setProductImageFileName] = useState('');
+  const [openEditProductDialog, setOpenEditProductDialog] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
   const [openDeleteProductConfirmDialog, setOpenDeleteProductConfirmDialog] = useState(false);
   const [productToDeleteId, setProductToDeleteId] = useState(null);
 
-  const handleOpenDeleteProductConfirmDialog = (productId) => {
-    setProductToDeleteId(productId);
-    setOpenDeleteProductConfirmDialog(true);
+  const [openStatusConfirmDialog, setOpenStatusConfirmDialog] = useState(false);
+  const [statusConfirmDetails, setStatusConfirmDetails] = useState({ orderId: null, newStatus: null });
+  const { data: ordersData, loading: loadingOrders, error: errorOrders, refetch: refetchOrders } = useQuery(GET_SELLER_ORDERS, { skip: !storeDataDb?.me?.store, fetchPolicy: 'network-only' });
+  const { data: categoriesData, loading: loadingCategories, error: errorCategories } = useQuery(GET_ALL_CATEGORIES);
+  const { data: storeCategoriesData, loading: loadingStoreCategories, error: errorStoreCategories } = useQuery(GET_ALL_STORE_CATEGORIES);
+
+  const store = storeDataDb?.me?.store;
+  const categories = categoriesData?.getAllCategories || [];
+  const storeCategories = storeCategoriesData?.getAllStoreCategories || [];
+  const orders = ordersData?.sellerOrders || [];
+
+  const [createStore] = useMutation(CREATE_STORE, {
+    update(cache, { data: { createStore: newStore } }) {
+      const existingStores = cache.readQuery({ query: GET_ALL_STORES, variables: { sortBy: 'updatedAt', sortOrder: 'DESC' } });
+      if (existingStores && existingStores.getAllStores) {
+        cache.writeQuery({
+          query: GET_ALL_STORES,
+          variables: { sortBy: 'updatedAt', sortOrder: 'DESC' },
+          data: {
+            getAllStores: [newStore, ...existingStores.getAllStores],
+          },
+        });
+      }
+    },
+        onCompleted: () => { refetchStore(); setSnackbar({ open: true, message: t('storeCreatedSuccess'), severity: 'success' }); },
+    onError: (err) => setSnackbar({ open: true, message: `${t('errorCreatingStore')}: ${err.message}`, severity: 'error' })
+  });
+  const [updateStore] = useMutation(UPDATE_STORE, { onCompleted: () => { refetchStore(); setOpenEditStoreDialog(false); setSnackbar({ open: true, message: t('storeUpdatedSuccess'), severity: 'success' }); }, onError: (err) => setSnackbar({ open: true, message: `${t('errorUpdatingStore')}: ${err.message}`, severity: 'error' }) });
+  const [createProduct] = useMutation(CREATE_PRODUCT, {
+    onCompleted: () => {
+      refetchStore();
+      reset();
+      setProductImageUrl('');
+      setProductImageFileName('');
+      setSnackbar({ open: true, message: t('productCreatedSuccess'), severity: 'success' });
+      handleCloseAddProductModal(); // Close modal on success
+    },
+    onError: (err) => setSnackbar({ open: true, message: `${t('errorCreatingProduct')}: ${err.message}`, severity: 'error' })
+  });
+  const [updateProduct] = useMutation(UPDATE_PRODUCT, { onCompleted: () => { refetchStore(); setOpenEditProductDialog(false); setSnackbar({ open: true, message: t('productUpdatedSuccess'), severity: 'success' }); }, onError: (err) => setSnackbar({ open: true, message: `${t('errorUpdatingProduct')}: ${err.message}`, severity: 'error' }) });
+  const [deleteProduct] = useMutation(DELETE_PRODUCT, { onCompleted: () => { refetchStore(); setSnackbar({ open: true, message: t('productDeletedSuccess'), severity: 'success' }); }, onError: (err) => setSnackbar({ open: true, message: `${t('errorDeletingProduct')}: ${err.message}`, severity: 'error' }) });
+  const [updateOrderStatus] = useMutation(UPDATE_ORDER_STATUS, { onCompleted: () => { refetchOrders(); setSnackbar({ open: true, message: t('orderStatusUpdatedSuccess'), severity: 'success' }); }, onError: (err) => setSnackbar({ open: true, message: `${t('errorUpdatingOrderStatus')}: ${err.message}`, severity: 'error' }) });
+  const [uploadImage] = useMutation(UPLOAD_IMAGE);
+
+  const handleTabChange = (event, newValue) => setTabValue(newValue);
+
+  const handleStoreInputChange = (e) => {
+    const { name, value } = e.target;
+    setStoreData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleCloseDeleteProductConfirmDialog = () => {
-    setOpenDeleteProductConfirmDialog(false);
-    setProductToDeleteId(null);
+  const handleCreateStore = async (e) => {
+    e.preventDefault();
+    if (!storeData.name.trim() || !storeData.description.trim()) return;
+    await createStore({ variables: { ...storeData, storeCategoryIds: selectedStoreCategories } });
   };
+
+  const handleCreateProduct = handleSubmit(async (data) => {
+    await createProduct({ variables: { name: data.productName, description: data.productDescription, price: parseFloat(data.productPrice), storeId: store.id, imageUrl: productImageUrl, categoryId: data.categoryId, stock: parseInt(data.productStock) } });
+  });
+
+  const handleUpdateProduct = handleSubmit(async (data) => {
+    await updateProduct({ variables: { id: editingProduct.id, name: data.productName, description: data.productDescription, price: parseFloat(data.productPrice), imageUrl: productImageUrl, stock: parseInt(data.productStock), categoryId: data.categoryId } });
+    setOpenEditProductDialog(false); // Close dialog on success
+  });
 
   const handleConfirmDeleteProduct = async () => {
-    try {
-      await deleteProduct({ variables: { id: productToDeleteId } });
-      handleCloseDeleteProductConfirmDialog();
-    } catch (err) {
-      console.error('Error deleting product:', err);
-      handleCloseDeleteProductConfirmDialog();
-    }
+    await deleteProduct({ variables: { id: productToDeleteId } });
+    setOpenDeleteProductConfirmDialog(false);
   };
 
-  const handleDeleteProduct = async (productId) => {
-    handleOpenDeleteProductConfirmDialog(productId);
+  const handleConfirmStatusChange = async () => {
+    await updateOrderStatus({ variables: { orderId: statusConfirmDetails.orderId, status: statusConfirmDetails.newStatus } });
+    setOpenStatusConfirmDialog(false);
   };
 
   const openEditDialog = (product) => {
     setEditingProduct(product);
-    setEditProductName(product.name);
-    setEditProductDescription(product.description);
-    setEditProductPrice(product.price);
-    setEditProductImageUrl(product.imageUrl);
-    setEditProductStock(product.stock);
-    setEditProductCategoryId(product.category.id);
+    setProductImageUrl(product.imageUrl); // Set existing image URL for display
+    setProductImageFileName(product.imageUrl ? product.imageUrl.substring(product.imageUrl.lastIndexOf('/') + 1) : ''); // Set file name for display
+    reset({ // Pre-fill the form with existing product data
+      productName: product.name,
+      productDescription: product.description,
+      productPrice: product.price,
+      productStock: product.stock,
+      categoryId: product.category.id,
+    });
     setOpenEditProductDialog(true);
   };
 
-  const handleEditProductImageChange = (e) => {
+  const handleProductImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setProductImageFileName(file.name);
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const { data } = await uploadImage({ variables: { base64Image: reader.result } });
+          setProductImageUrl(data.uploadImage); // Set URL returned by backend
+        } catch (err) {
+          setSnackbar({ open: true, message: `${t('errorUploadingImage')}: ${err.message}`, severity: 'error' });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleStoreImageChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditProductImageUrl(reader.result);
+      reader.onloadend = async () => {
+        try {
+          const { data } = await uploadImage({ variables: { base64Image: reader.result } });
+          console.log('Uploaded image URL:', data.uploadImage); // Debug log
+          setStoreData(prev => ({ ...prev, imageUrl: data.uploadImage }));
+        } catch (err) {
+          setSnackbar({ open: true, message: `${t('errorUploadingImage')}: ${err.message}`, severity: 'error' });
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -371,512 +203,200 @@ const SellerDashboard = () => {
 
   const getStatusChipColor = (status) => {
     switch (status) {
-      case 'payment_pending':
-        return 'warning';
-      case 'payment_confirmed':
-        return 'info';
-      case 'delivery_agreed':
-        return 'secondary';
-      case 'delivered_payment_received':
-        return 'success';
-      case 'cancelled':
-        return 'error';
-      default:
-        return 'default';
+      case 'payment_pending': return 'warning';
+      case 'payment_confirmed': return 'info';
+      case 'delivery_agreed': return 'secondary';
+      case 'delivered_payment_received': return 'success';
+      case 'cancelled': return 'error';
+      default: return 'default';
     }
   };
 
   if (loadingStore || loadingCategories) return <CircularProgress />;
-  if (errorStore && !store) return <Alert severity="error">Error loading store data: {errorStore.message}</Alert>;
-  if (errorCategories) return <Alert severity="error">Error loading categories: {errorCategories.message}</Alert>;
-
-  const categories = categoriesData?.getAllCategories || [];
-  const orders = ordersData?.sellerOrders || [];
+  if (errorStore && !store) return <Alert severity="error">{t('errorLoadingStore')}: {errorStore.message}</Alert>;
+  if (errorCategories) return <Alert severity="error">{t('errorLoadingCategories')}: {errorCategories.message}</Alert>;
 
   if (!store) {
     return (
       <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
-        <Typography variant="h5">Create Your Store</Typography>
+        <Typography variant="h5" align="center" gutterBottom>{t('createYourStore')}</Typography>
         <Box component="form" onSubmit={handleCreateStore}>
-          <TextField
-            fullWidth
-            label="Store Name"
-            value={storeName}
-            onChange={(e) => setStoreName(e.target.value)}
-            margin="normal"
-            required
-            error={!!storeNameError}
-            helperText={storeNameError}
-          />
-          <TextField
-            fullWidth
-            label="Store Description"
-            value={storeDescription}
-            onChange={(e) => setStoreDescription(e.target.value)}
-            margin="normal"
-            multiline
-            rows={3}
-            required
-            error={!!storeDescriptionError}
-            helperText={storeDescriptionError}
-          />
-          <Button type="submit" variant="contained" sx={{ mt: 2 }}>
-            Create Store
-          </Button>
+          <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ mt: 2, mb: 1 }}>{t('basicStoreInformation')}</Typography>
+          <TextField fullWidth label={t('storeName')} name="name" value={storeData.name} onChange={handleStoreInputChange} margin="normal" required />
+          <TextField fullWidth label={t('storeDescription')} name="description" value={storeData.description} onChange={handleStoreInputChange} margin="normal" multiline rows={3} required />
+          
+          <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ mt: 3, mb: 1 }}>{t('storeCategoriesSubtitle')}</Typography>
+          <FormControl fullWidth margin="normal">
+            <InputLabel>{t('selectCategories')}</InputLabel>
+            <Select
+              multiple
+              value={selectedStoreCategories}
+              onChange={(e) => setSelectedStoreCategories(e.target.value)}
+              renderValue={(selected) => (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {selected.map((value) => {
+                    const category = storeCategories.find(c => c.id === value);
+                    return <Chip key={value} label={category ? category.name : ''} />;
+                  })}
+                </Box>
+              )}
+            >
+              {storeCategories.map((category) => (
+                <MenuItem key={category.id} value={category.id}>
+                  {category.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ mt: 3, mb: 1 }}>{t('storeLocation')}</Typography>
+          <TextField fullWidth label={t('street')} name="street" value={storeData.street} onChange={handleStoreInputChange} margin="normal" />
+          <TextField fullWidth label={t('city')} name="city" value={storeData.city} onChange={handleStoreInputChange} margin="normal" required />
+          <TextField fullWidth label={t('state')} name="state" value={storeData.state} onChange={handleStoreInputChange} margin="normal" required />
+          <TextField fullWidth label={t('zipCode')} name="zipCode" value={storeData.zipCode} onChange={handleStoreInputChange} margin="normal" required />
+          <TextField fullWidth label={t('country')} name="country" value={storeData.country} onChange={handleStoreInputChange} margin="normal" />
+
+          <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ mt: 3, mb: 1 }}>{t('contactInformation')}</Typography>
+          <TextField fullWidth label={t('phoneNumber')} name="phoneNumber" value={storeData.phoneNumber} onChange={handleStoreInputChange} margin="normal" required />
+          <TextField fullWidth label={t('contactEmail')} name="contactEmail" value={storeData.contactEmail} onChange={handleStoreInputChange} margin="normal" required />
+          
+          <Paper variant="outlined" sx={{ p: 2, textAlign: 'center', mt: 2 }}>
+            <Button variant="outlined" component="label" startIcon={<UploadFileIcon />} fullWidth>
+              {t('uploadStoreImage')}
+              <input type="file" hidden accept="image/*" onChange={handleStoreImageChange} />
+            </Button>
+            {storeData.imageUrl && (
+              <Box sx={{ mt: 2 }}>
+                <img src={storeData.imageUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain' }} onLoad={() => console.log('Store image loaded successfully!', storeData.imageUrl)} onError={(e) => console.error('Error loading store image:', e.target.src, e)} />
+              </Box>
+            )}
+          </Paper>
+          
+          <Button type="submit" variant="contained" sx={{ mt: 2 }}>{t('createStore')}</Button>
         </Box>
       </Paper>
     );
   }
 
+  console.log('Current storeData.imageUrl:', storeData.imageUrl); // Debug log
+
   return (
     <Box sx={{ mt: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Seller Dashboard
-      </Typography>
-
+      
+      <Typography variant="h4" gutterBottom>{t('sellerDashboard')}</Typography>
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs value={tabValue} onChange={handleTabChange} aria-label="seller dashboard tabs">
-          <Tab label="Store Management" />
-          <Tab label="Product Management" />
-          <Tab label="Order Management" />
+          <Tab label={t('storeManagement')} />
+          <Tab label={t('productManagement')} />
+          <Tab label={t('orderManagement')} />
         </Tabs>
       </Box>
 
       {tabValue === 0 && (
         <Paper elevation={3} sx={{ p: 4 }}>
-          <Typography variant="h5" gutterBottom>
-            Your Store Details
-          </Typography>
-          <Typography variant="h6">Name: {store.name}</Typography>
-          <Typography variant="body1">Description: {store.description}</Typography>
-          {store.imageUrl && (
-            <Box sx={{ mt: 2 }}>
-              <img src={store.imageUrl} alt={store.name} style={{ maxWidth: '200px', height: 'auto' }} />
+          <Typography variant="h5" gutterBottom>{t('storeDetails')}</Typography>
+          <Typography variant="h6">{t('name')}: {store.name}</Typography>
+          <Typography variant="body1">{t('description')}: {store.description}</Typography>
+          <Typography variant="body2" color="text.secondary">{t('status')}: {store.status}</Typography>
+          {store.averageRating !== null && store.averageRating !== undefined && (
+            <Typography variant="body2" color="text.secondary">{t('averageRating')}: {store.averageRating.toFixed(1)}</Typography>
+          )}
+          <Typography variant="body2" color="text.secondary">{t('contactEmail')}: {store.contactEmail}</Typography>
+          <Typography variant="body2" color="text.secondary">{t('phoneNumber')}: {store.phoneNumber}</Typography>
+          <Typography variant="body2" color="text.secondary">{`${store.street}, ${store.city}, ${store.state} ${store.zipCode}, ${store.country}`}</Typography>
+          {store.storeCategories && store.storeCategories.length > 0 && (
+            <Box sx={{ mt: 1, mb: 2 }}>
+              <Typography variant="body2" color="text.secondary" component="span">{t('categories')}: </Typography>
+              {store.storeCategories.map(cat => (
+                <Chip key={cat.id} label={cat.name} size="small" sx={{ mr: 0.5, mb: 0.5 }} />
+              ))}
             </Box>
           )}
-          <Button
-            variant="contained"
-            onClick={() => {
-              setEditStoreName(store.name);
-              setEditStoreDescription(store.description);
-              setOpenEditStoreDialog(true);
-            }}
-            sx={{ mt: 2 }}
-          >
-            Edit Store Details
-          </Button>
+          {store.imageUrl && <Box sx={{ mt: 2 }}><img src={store.imageUrl} alt={store.name} style={{ maxWidth: '200px', height: 'auto' }} /></Box>}
+          <Button variant="contained" onClick={() => {
+            setEditStoreName(store.name);
+            setEditStoreDescription(store.description);
+            setEditStoreImageUrl(store.imageUrl);
+            setEditStoreStreet(store.street || '');
+            setEditStoreCity(store.city || '');
+            setEditStoreState(store.state || '');
+            setEditStoreZipCode(store.zipCode || '');
+            setEditStoreCountry(store.country || '');
+            setEditStorePhoneNumber(store.phoneNumber || '');
+            setEditStoreContactEmail(store.contactEmail || '');
+            setOpenEditStoreDialog(true);
+          }} sx={{ mt: 2 }}>{t('editStoreDetails')}</Button>
         </Paper>
       )}
 
       {tabValue === 1 && (
         <Box>
+          <Button variant="contained" sx={{ mb: 3 }} onClick={handleOpenAddProductModal}>
+            {t('addNewProduct')}
+          </Button>
           <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
-            <Typography variant="h5">Add New Product</Typography>
-            <Box component="form" onSubmit={handleSubmit(handleCreateProduct)}>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Product Name"
-                    {...register('productName', { required: 'Product name is required.' })}
-                    error={!!errors.productName}
-                    helperText={errors.productName?.message}
-                    margin="normal"
-                    required
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Product Description"
-                    {...register('productDescription', { required: 'Product description is required.' })}
-                    error={!!errors.productDescription}
-                    helperText={errors.productDescription?.message}
-                    margin="normal"
-                    multiline
-                    rows={4}
-                    required
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Price"
-                    {...register('productPrice', {
-                      required: 'Price is required.',
-                      min: { value: 0.01, message: 'Price must be a positive number.' },
-                      valueAsNumber: true,
-                    })}
-                    error={!!errors.productPrice}
-                    helperText={errors.productPrice?.message}
-                    margin="normal"
-                    type="number"
-                    required
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Stock Quantity"
-                    {...register('productStock', {
-                      required: 'Stock quantity is required.',
-                      min: { value: 0, message: 'Stock must be a non-negative number.' },
-                      valueAsNumber: true,
-                    })}
-                    error={!!errors.productStock}
-                    helperText={errors.productStock?.message}
-                    margin="normal"
-                    type="number"
-                    required
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <FormControl fullWidth margin="normal" required error={!!errors.categoryId}>
-                    <InputLabel id="category-select-label">Category</InputLabel>
-                    <Controller
-                      name="categoryId"
-                      control={control}
-                      rules={{ required: 'Category is required.' }}
-                      render={({ field }) => (
-                        <Select labelId="category-select-label" label="Category" {...field}>
-                          {categories.map((cat) => (
-                            <MenuItem key={cat.id} value={cat.id}>
-                              {cat.name}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      )}
-                    />
-                    {errors.categoryId && (
-                      <Typography color="error" variant="caption">
-                        {errors.categoryId?.message}
-                      </Typography>
-                    )}
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
-                    Product Image
-                  </Typography>
-                  <input
-                    accept="image/png, image/jpeg"
-                    style={{ display: 'none' }}
-                    id="product-image-upload"
-                    type="file"
-                    onChange={handleProductImageChange}
-                  />
-                  <label htmlFor="product-image-upload">
-                    <Button variant="outlined" component="span" startIcon={<UploadFileIcon />} fullWidth>
-                      Upload Product Image
-                    </Button>
-                  </label>
-                  {productImageFileName && (
-                    <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                      Selected file: {productImageFileName}
-                    </Typography>
-                  )}
-                  {productImageUrl && (
-                    <Box sx={{ mt: 2, mb: 2, textAlign: 'center' }}>
-                      <img
-                        src={productImageUrl}
-                        alt="Product preview"
-                        style={{ maxWidth: '100px', maxHeight: '100px', objectFit: 'contain' }}
-                      />
-                    </Box>
-                  )}
-                </Grid>
-              </Grid>
-              <Button type="submit" variant="contained" sx={{ mt: 3, display: 'block', mx: 'auto' }}>
-                Add Product
-              </Button>
+            <Typography variant="h5">{t('yourProducts')}</Typography>
+            {store.products?.length === 0 ? <Typography>{t('noProductsAdded')}</Typography> : <Grid container spacing={2}>{store.products.map((p) => <Grid item xs={12} sm={6} md={4} key={p.id}><Card sx={{ height: '100%' }}><CardMedia component="img" height="140" image={p.imageUrl || '/images/product-placeholder.svg'} alt={p.name} /><CardContent><Typography gutterBottom variant="h6">{p.name}</Typography><Typography variant="h6">${p.price}</Typography><Typography variant="body2">{t('stock')}: {p.stock}</Typography></CardContent><CardActions><Button size="small" onClick={() => openEditDialog(p)}>{t('edit')}</Button><Button size="small" color="error" onClick={() => { setProductToDeleteId(p.id); setOpenDeleteProductConfirmDialog(true); }}>{t('delete')}</Button></CardActions></Card></Grid>)}</Grid>}
+              </Paper>
             </Box>
-          </Paper>
-          <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
-            <Typography variant="h5">Your Products</Typography>
-            {store.products && store.products.length === 0 ? (
-              <Typography>You haven't added any products yet.</Typography>
-            ) : (
-              <Grid container spacing={2}>
-                {store.products &&
-                  store.products.map((p) => (
-                    <Grid item xs={12} sm={6} md={4} key={p.id}>
-                      <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        <Link to={`/products/${p.id}`} style={{ textDecoration: 'none', color: 'inherit', flexGrow: 1 }}>
-                          <CardMedia
-                            component="img"
-                            height="140"
-                            image={p.imageUrl || '/images/product-placeholder.svg'}
-                            alt={p.name}
-                          />
-                          <CardContent>
-                            <Typography gutterBottom variant="h6" component="div">
-                              {p.name}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" noWrap>
-                              {p.description}
-                            </Typography>
-                            <Typography variant="h6" sx={{ mt: 1 }}>
-                              ${p.price}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              Stock: {p.stock}
-                            </Typography>
-                          </CardContent>
-                        </Link>
-                        <CardActions>
-                          <Button size="small" onClick={() => openEditDialog(p)}>
-                            Edit
-                          </Button>
-                          <Button size="small" color="error" onClick={() => handleDeleteProduct(p.id)}>
-                            Delete
-                          </Button>
-                        </CardActions>
-                      </Card>
-                    </Grid>
-                  ))}
-              </Grid>
-            )}
-          </Paper>
-        </Box>
-      )}
-
-      {tabValue === 2 && (
-        <Paper elevation={3} sx={{ p: 4 }}>
-          <Typography variant="h5" gutterBottom>
-            Customer Orders
-          </Typography>
-          {loadingOrders ? (
-            <CircularProgress />
-          ) : errorOrders ? (
-            <Alert severity="error">Error loading orders: {errorOrders.message}</Alert>
-          ) : orders.length === 0 ? (
-            <Typography>No orders received yet.</Typography>
-          ) : (
-            <Grid container spacing={2}>
-              {orders.map((order) => (
-                <Grid item xs={12} md={6} key={order.id}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="h6">Order ID: {order.id}</Typography>
-                      <Typography variant="body1">
-                        Customer: {order.customer.name} ({order.customer.email})
-                      </Typography>
-                      <Typography variant="body1">
-                        Total: ${order.totalAmount.toFixed(2)}
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Typography variant="body1">Status:</Typography>
-                        <Chip
-                          label={order.status.replace('_', ' ').toUpperCase()}
-                          color={getStatusChipColor(order.status)}
-                          size="small"
-                        />
-                      </Box>
-                      <Typography variant="body1">
-                        Delivery Address: {order.deliveryAddress}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Order Date: {new Date(order.createdAt).toLocaleDateString()}
-                      </Typography>
-                      <Box sx={{ mt: 2 }}>
-                        <Typography variant="subtitle1">Items:</Typography>
-                        <List dense>
-                          {order.items.map((item) => (
-                            <ListItem key={item.id}>
-                              <ListItemText
-                                primary={`${item.product.name} x ${item.quantity} (${item.priceAtOrder.toFixed(2)} each)`}
-                              />
-                            </ListItem>
-                          ))}
-                        </List>
-                      </Box>
-                      <FormControl fullWidth sx={{ mt: 2 }}>
-                        <InputLabel id={`status-label-${order.id}`}>Update Order Status</InputLabel>
-                        <Select
-                          labelId={`status-label-${order.id}`}
-                          value={order.status}
-                          label="Update Order Status"
-                          onChange={(e) => handleOrderStatusChange(order.id, e.target.value)}
-                          disabled={finalStatuses.includes(order.status)}
-                        >
-                          <MenuItem value="payment_pending">Payment Pending</MenuItem>
-                          <MenuItem value="payment_confirmed">Payment Confirmed</MenuItem>
-                          <MenuItem value="delivery_agreed">Delivery Agreed</MenuItem>
-                          <MenuItem value="delivered_payment_received">Delivered & Payment Received</MenuItem>
-                          <MenuItem value="cancelled">Cancelled</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </CardContent>
-                    <CardActions sx={{ justifyContent: 'flex-end' }}>
-                      <Button component={Link} to={`/order-confirmation/${order.id}`} size="small">
-                        View/Download Receipt
-                      </Button>
-                    </CardActions>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
           )}
-        </Paper>
-      )}
 
-      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={() => setSnackbarOpen(false)}>
-        <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity} sx={{ width: '100%' }}>
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
+          <Dialog open={openAddProductModal} onClose={handleCloseAddProductModal} fullWidth maxWidth="sm">
+            <DialogTitle sx={{ textAlign: 'center' }}>{t('addNewProduct')}</DialogTitle>
+            <DialogContent>
+              <ProductForm
+                register={register}
+                handleSubmit={handleSubmit(handleCreateProduct)}
+                errors={errors}
+                control={control}
+                categories={categories}
+                productImageUrl={productImageUrl}
+                productImageFileName={productImageFileName}
+                handleProductImageChange={handleProductImageChange}
+                t={t}
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseAddProductModal}>{t('cancel')}</Button>
+              <Button onClick={handleSubmit(handleCreateProduct)} variant="contained">{t('addProduct')}</Button>
+            </DialogActions>
+          </Dialog>
 
-      <Dialog open={openEditStoreDialog} onClose={() => setOpenEditStoreDialog(false)}>
-        <DialogTitle>Edit Store Details</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Store Name"
-            type="text"
-            fullWidth
-            value={editStoreName}
-            onChange={(e) => setEditStoreName(e.target.value)}
-          />
-          <TextField
-            margin="dense"
-            label="Store Description"
-            type="text"
-            fullWidth
-            multiline
-            rows={4}
-            value={editStoreDescription}
-            onChange={(e) => setEditStoreDescription(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenEditStoreDialog(false)}>Cancel</Button>
-          <Button
-            onClick={async () => {
-              try {
-                await updateStore({ variables: { id: store.id, name: editStoreName, description: editStoreDescription } });
-              } catch (error) {
-                console.error('Error updating store:', error);
-              }
-            }}
-          >
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
+          {tabValue === 2 && (
+            <Paper elevation={3} sx={{ p: 4 }}>
+              <Typography variant="h5" gutterBottom>{t('customerOrders')}</Typography>
+              {loadingOrders ? <CircularProgress /> : errorOrders ? <Alert severity="error">{t('errorLoadingOrders')}: {errorOrders.message}</Alert> : orders.length === 0 ? <Typography>{t('noOrdersReceived')}</Typography> : <Grid container spacing={2}>{orders.map((order) => <Grid item xs={12} md={6} key={order.id}><Card variant="outlined"><CardContent><Typography variant="h6">{t('orderId')}: {order.id}</Typography><Typography>{t('customer')}: {order.customer.name}</Typography><Typography>{t('total')}: ${order.totalAmount.toFixed(2)}</Typography>                                    <Chip label={t(`orderStatus_${order.status}`)} color={getStatusChipColor(order.status)} size="small" /><FormControl fullWidth sx={{ mt: 2 }}><InputLabel>{t('updateOrderStatus')}</InputLabel><Select value={order.status} label={t('updateOrderStatus')} onChange={(e) => setStatusConfirmDetails({ orderId: order.id, newStatus: e.target.value })} onBlur={() => handleConfirmStatusChange()} disabled={['delivered_payment_received', 'cancelled'].includes(order.status)}><MenuItem value="payment_pending">{t('paymentPending')}</MenuItem><MenuItem value="payment_confirmed">{t('paymentConfirmed')}</MenuItem><MenuItem value="delivery_agreed">{t('deliveryAgreed')}</MenuItem><MenuItem value="delivered_payment_received">{t('delivered')}</MenuItem><MenuItem value="cancelled">{t('cancelled')}</MenuItem></Select></FormControl></CardContent></Card></Grid>)}</Grid>}
+            </Paper>
+          )}
 
-      <Dialog
-        open={openStatusConfirmDialog}
-        onClose={handleCloseStatusConfirmDialog}
-        aria-labelledby="status-confirm-dialog-title"
-        aria-describedby="status-confirm-dialog-description"
-      >
-        <DialogTitle id="status-confirm-dialog-title">Confirm Order Status Change</DialogTitle>
-        <DialogContent>
-          <Typography id="status-confirm-dialog-description">
-            Are you sure you want to confirm this status? This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseStatusConfirmDialog} color="primary">
-            Cancel
-          </Button>
-          <Button onClick={handleConfirmStatusChange} color="primary" autoFocus>
-            Confirm
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {editingProduct && (
-        <Dialog open={openEditProductDialog} onClose={() => setOpenEditProductDialog(false)}>
-          <DialogTitle>Edit Product</DialogTitle>
-          <DialogContent>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="Product Name"
-              type="text"
-              fullWidth
-              value={editProductName}
-              onChange={(e) => setEditProductName(e.target.value)}
-            />
-            <TextField
-              margin="dense"
-              label="Product Description"
-              type="text"
-              fullWidth
-              multiline
-              rows={4}
-              value={editProductDescription}
-              onChange={(e) => setEditProductDescription(e.target.value)}
-            />
-            <TextField
-              margin="dense"
-              label="Price"
-              type="number"
-              fullWidth
-              value={editProductPrice}
-              onChange={(e) => setEditProductPrice(e.target.value)}
-            />
-            <TextField
-              margin="dense"
-              label="Stock"
-              type="number"
-              fullWidth
-              value={editProductStock}
-              onChange={(e) => setEditProductStock(e.target.value)}
-            />
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Category</InputLabel>
-              <Select
-                value={editProductCategoryId}
-                onChange={(e) => setEditProductCategoryId(e.target.value)}
-              >
-                {categories.map((cat) => (
-                  <MenuItem key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Button variant="outlined" component="label" fullWidth>
-              Upload Image
-              <input type="file" hidden accept="image/*" onChange={handleEditProductImageChange} />
-            </Button>
-            {editProductImageUrl && (
-              <img src={editProductImageUrl} alt="Product" style={{ width: '100%', marginTop: '10px' }} />
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenEditProductDialog(false)}>Cancel</Button>
-            <Button onClick={handleUpdateProduct}>Save</Button>
-          </DialogActions>
-        </Dialog>
-      )}
-
-      <Dialog
-        open={openDeleteProductConfirmDialog}
-        onClose={handleCloseDeleteProductConfirmDialog}
-        aria-labelledby="delete-product-dialog-title"
-        aria-describedby="delete-product-dialog-description"
-      >
-        <DialogTitle id="delete-product-dialog-title">Confirm Product Deletion</DialogTitle>
-        <DialogContent>
-          <Typography id="delete-product-dialog-description">
-            Are you sure you want to delete this product? This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDeleteProductConfirmDialog} color="primary">
-            Cancel
-          </Button>
-          <Button onClick={handleConfirmDeleteProduct} color="error" autoFocus>
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+          <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })}><Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>{snackbar.message}</Alert></Snackbar>
+          <Dialog open={openEditStoreDialog} onClose={() => setOpenEditStoreDialog(false)}><DialogTitle>{t('editStoreDetails')}</DialogTitle><DialogContent><TextField autoFocus margin="dense" label={t('storeName')} type="text" fullWidth value={editStoreName} onChange={(e) => setEditStoreName(e.target.value)} /><TextField margin="dense" label={t('storeDescription')} type="text" fullWidth multiline rows={4} value={editStoreDescription} onChange={(e) => setEditStoreDescription(e.target.value)} /><TextField margin="dense" label={t('street')} type="text" fullWidth value={editStoreStreet} onChange={(e) => setEditStoreStreet(e.target.value)} /><TextField margin="dense" label={t('city')} type="text" fullWidth value={editStoreCity} onChange={(e) => setEditStoreCity(e.target.value)} /><TextField margin="dense" label={t('state')} type="text" fullWidth value={editStoreState} onChange={(e) => setEditStoreState(e.target.value)} /><TextField margin="dense" label={t('zipCode')} type="text" fullWidth value={editStoreZipCode} onChange={(e) => setEditStoreZipCode(e.target.value)} /><TextField margin="dense" label={t('country')} type="text" fullWidth value={editStoreCountry} onChange={(e) => setEditStoreCountry(e.target.value)} /><TextField margin="dense" label={t('phoneNumber')} type="text" fullWidth value={editStorePhoneNumber} onChange={(e) => setEditStorePhoneNumber(e.target.value)} /><TextField margin="dense" label={t('contactEmail')} type="text" fullWidth value={editStoreContactEmail} onChange={(e) => setEditStoreContactEmail(e.target.value)} /><Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}><Button variant="outlined" component="label" startIcon={<UploadFileIcon />} fullWidth>{t('uploadStoreImage')}<input type="file" hidden accept="image/*" onChange={handleEditStoreImageChange} /></Button>{editStoreImageFileName && (<Typography variant="caption" display="block" sx={{ mt: 1 }}>{t('selectedFile', { fileName: editStoreImageFileName })}</Typography>)}{editStoreImageUrl && (<Box sx={{ mt: 2 }}><img src={editStoreImageUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain' }} /></Box>)}</Paper></DialogContent><DialogActions><Button onClick={() => setOpenEditStoreDialog(false)}>{t('cancel')}</Button><Button onClick={() => updateStore({ variables: { id: store.id, name: editStoreName, description: editStoreDescription, imageUrl: editStoreImageUrl, street: editStoreStreet, city: editStoreCity, state: editStoreState, zipCode: editStoreZipCode, country: editStoreCountry, phoneNumber: editStorePhoneNumber, contactEmail: editStoreContactEmail } })}>{t('save')}</Button></DialogActions></Dialog>
+          {editingProduct && (
+            <Dialog open={openEditProductDialog} onClose={() => setOpenEditProductDialog(false)} fullWidth maxWidth="sm">
+              <DialogTitle sx={{ textAlign: 'center' }}>{t('addNewProduct')}</DialogTitle>
+              <DialogContent>
+                <ProductForm
+                  register={register}
+                  handleSubmit={handleSubmit(handleUpdateProduct)}
+                  errors={errors}
+                  control={control}
+                  categories={categories}
+                  productImageUrl={productImageUrl}
+                  productImageFileName={productImageFileName}
+                  handleProductImageChange={handleProductImageChange}
+                  t={t}
+                />
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={handleCloseAddProductModal}>{t('cancel')}</Button>
+                <Button onClick={handleSubmit(handleCreateProduct)} variant="contained">{t('addProduct')}</Button>
+              </DialogActions>
+            </Dialog>
+          )}
+          <Dialog open={openDeleteProductConfirmDialog} onClose={() => setOpenDeleteProductConfirmDialog(false)}><DialogTitle>{t('confirmProductDeletion')}</DialogTitle><DialogContent><Typography>{t('areYouSureDeleteProduct')}</Typography></DialogContent><DialogActions><Button onClick={() => setOpenDeleteProductConfirmDialog(false)}>{t('cancel')}</Button><Button onClick={handleConfirmDeleteProduct} color="error">{t('delete')}</Button></DialogActions></Dialog>
+          <Dialog open={openStatusConfirmDialog} onClose={() => setOpenStatusConfirmDialog(false)}><DialogTitle>{t('confirmOrderStatusChange')}</DialogTitle><DialogContent><Typography>{t('confirmStatusChange')}</Typography></DialogContent><DialogActions><Button onClick={() => setOpenStatusConfirmDialog(false)}>{t('cancel')}</Button><Button onClick={handleConfirmStatusChange} color="primary">{t('confirm')}</Button></DialogActions></Dialog>
+        </Box>
+      
   );
 };
-
 export default SellerDashboard;

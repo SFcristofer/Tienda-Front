@@ -7,6 +7,13 @@ export const ME_QUERY = gql`
       name
       email
       role
+      avatarUrl
+      phoneNumber
+      store { # Add this block
+        id
+        name
+        status
+      }
     }
   }
 `;
@@ -17,19 +24,32 @@ export const GET_MY_STORE = gql`
       store {
         id
         name
-        description # Add description here
-        imageUrl # Add imageUrl here as well, for consistency
+        description
+        imageUrl
+        status
+        street
+        city
+        state
+        zipCode
+        country
+        phoneNumber
+        contactEmail
+        averageRating
         products {
           id
           name
           price
-          description # Add description to products as well
-          imageUrl # Add imageUrl to products as well
-          stock # Add stock to products as well
+          description
+          imageUrl
+          stock
           category {
             id
             name
           }
+        }
+        storeCategories {
+          id
+          name
         }
       }
     }
@@ -37,8 +57,24 @@ export const GET_MY_STORE = gql`
 `;
 
 export const GET_ALL_PRODUCTS = gql`
-  query GetAllProducts {
-    getAllProducts {
+  query GetAllProducts(
+    $categoryId: [ID],
+    $minPrice: Float,
+    $maxPrice: Float,
+    $search: String,
+    $sortBy: String,
+    $sortOrder: String,
+    $storeId: ID
+  ) {
+    getAllProducts(
+      categoryId: $categoryId,
+      minPrice: $minPrice,
+      maxPrice: $maxPrice,
+      search: $search,
+      sortBy: $sortBy,
+      sortOrder: $sortOrder,
+      storeId: $storeId
+    ) {
       id
       name
       description
@@ -86,6 +122,17 @@ export const GET_STORE_BY_ID = gql`
       name
       description
       imageUrl # Añadimos imageUrl aquí
+      street
+      city
+      state
+      zipCode
+      country
+      phoneNumber
+      contactEmail
+      storeCategories {
+        id
+        name
+      }
       owner {
         id
         name
@@ -168,6 +215,7 @@ export const MY_ADDRESSES_QUERY = gql`
       state
       zipCode
       country
+      phoneNumber
       isDefault
     }
   }
@@ -270,6 +318,7 @@ export const adminGetAllStores = gql`
       products {
         id
       }
+      status
     }
   }
 `;
@@ -458,6 +507,59 @@ export const ADMIN_GET_CANCELLED_ORDERS = gql`
       date
       count
       totalAmount
+    }
+  }
+`;
+
+export const MY_NOTIFICATIONS_QUERY = gql`
+  query MyNotifications {
+    myNotifications {
+      id
+      type
+      message
+      isRead
+      createdAt
+      relatedEntityId
+      relatedEntityType
+    }
+  }
+`;
+
+export const GET_ALL_STORE_CATEGORIES = gql`
+  query GetAllStoreCategories {
+    getAllStoreCategories {
+      id
+      name
+    }
+  }
+`;
+
+// Add this at the end of the file
+export const GET_USER_BY_ID = gql`
+  query GetUserById($id: ID!) {
+    user(id: $id) {
+      id
+      name
+      email
+      role
+      isVerified
+      status
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const GET_FILTERED_STORES = gql`
+  query GetFilteredStores($search: String, $sortBy: StoreSortBy, $sortOrder: SortOrder, $storeCategoryIds: [ID]) {
+    getAllStores(search: $search, sortBy: $sortBy, sortOrder: $sortOrder, storeCategoryIds: $storeCategoryIds) {
+      id
+      name
+      description
+      imageUrl
+      owner {
+        name
+      }
     }
   }
 `;

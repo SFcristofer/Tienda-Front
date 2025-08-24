@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import './i18n'; // Importar la configuración de i18n
 import { ApolloProvider, ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
 import { onError } from '@apollo/client/link/error';
@@ -10,7 +11,7 @@ import theme from './theme'; // Importamos nuestro tema
 
 // Creamos el link a nuestra API de GraphQL
 const httpLink = createHttpLink({
-  uri: 'https://store-ehnr.onrender.com/graphql',
+  uri: process.env.REACT_APP_API_URL + '/graphql',
 });
 
 // Creamos un middleware para adjuntar el token a cada petición
@@ -58,11 +59,11 @@ const client = new ApolloClient({
   cache: new InMemoryCache(),
   defaultOptions: {
     watchQuery: {
-      fetchPolicy: 'no-cache',
+      fetchPolicy: 'cache-first',
       errorPolicy: 'ignore',
     },
     query: {
-      fetchPolicy: 'no-cache',
+      fetchPolicy: 'cache-first',
       errorPolicy: 'all',
     },
   },
