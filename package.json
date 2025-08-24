@@ -2,7 +2,6 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://SFcristofer.github.io/Store/",
   "dependencies": {
     "@apollo/client": "^3.13.9",
     "@emotion/react": "^11.14.0",
