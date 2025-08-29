@@ -27,8 +27,8 @@ const StoreDetailPage = () => {
   const navigate = useNavigate();
 
   const handleBuyNow = (product) => {
-    addToCart(product);
-    navigate('/cart');
+    const productWithStore = { ...product, store: { id: store.id, name: store.name } };
+    navigate('/checkout', { state: { product: productWithStore } });
   };
 
   if (loading) return <CircularProgress />;
@@ -60,18 +60,54 @@ const StoreDetailPage = () => {
       ) : (
         <Grid container spacing={4}>
           {store.products.map((product) => (
-            <Grid item key={product.id} xs={12} sm={6} md={4} lg={3}>
-              <Card component={Link} to={`/products/${product.id}`} sx={{ height: '100%', display: 'flex', flexDirection: 'column', textDecoration: 'none' }}>
-                <CardMedia component="img" height="140" image={product.imageUrl || `/images/product-placeholder.svg`} alt={product.name} />
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Typography gutterBottom variant="h6" component="div">{product.name}</Typography>
-                  <Typography variant="body2" color="text.secondary" noWrap>{product.description}</Typography>
-                  <Typography variant="h6" sx={{ mt: 1 }}>${product.price}</Typography>
+            <Grid item key={product.id} xs={12} sm={6} md={6} lg={4}>
+              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <Link to={`/products/${product.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                  <CardMedia
+                    component="img"
+                    height="160"
+                    image={product.imageUrl || `/images/product-placeholder.svg`}
+                    alt={product.name}
+                    sx={{ objectFit: 'contain', width: '100%' }}
+                  />
+                  <CardContent sx={{ flexGrow: 1, p: 2 }}>
+                    <Typography
+                      gutterBottom
+                      variant="h6"
+                      component="div"
+                      sx={{ fontWeight: 'bold' }}
+                    >
+                      {product.name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }} noWrap>
+                      {product.description}
+                    </Typography>
+                  </CardContent>
+                </Link>
+                <CardContent sx={{ p: 2, pt: 0 }}>
+                  <Typography variant="h5" sx={{ mt: 'auto', fontWeight: 'bold', color: 'primary.main' }}>
+                    ${product.price.toFixed(2)}
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      startIcon={<AddShoppingCartIcon />}
+                      onClick={(e) => { e.stopPropagation(); addToCart({ ...product, store: { id: store.id, name: store.name } }); }}
+                      sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 'bold' }}
+                    >
+                      {t('addToCart')}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={(e) => { e.stopPropagation(); handleBuyNow(product); }}
+                      sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 'bold' }}
+                    >
+                      {t('buyNow')}
+                    </Button>
+                  </Box>
                 </CardContent>
-                <Box sx={{ p: 2, display: 'flex', gap: 1 }}>
-                  <Button variant="contained" color="secondary" fullWidth startIcon={<AddShoppingCartIcon />} onClick={() => addToCart(product)}>{t('addToCart')}</Button>
-                  <Button variant="outlined" color="secondary" fullWidth onClick={() => handleBuyNow(product)}>{t('buyNow')}</Button>
-                </Box>
               </Card>
             </Grid>
           ))}

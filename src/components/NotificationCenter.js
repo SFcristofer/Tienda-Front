@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react'; // Added useEffect
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@apollo/client';
 import { MY_NOTIFICATIONS_QUERY } from '../graphql/queries';
 import { MARK_NOTIFICATION_AS_READ_MUTATION, MARK_ALL_NOTIFICATIONS_AS_READ_MUTATION } from '../graphql/mutations';
@@ -6,7 +7,7 @@ import {
   Box,
   Typography,
   List,
-  ListItem,
+  ListItemButton,
   ListItemText,
   IconButton,
   Button,
@@ -18,8 +19,9 @@ import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 import DeleteIcon from '@mui/icons-material/Delete'; // Assuming we might add delete later
 import { useTranslation } from 'react-i18next';
 
-const NotificationCenter = ({ onUnreadCountChange }) => { // Added onUnreadCountChange prop
+const NotificationCenter = ({ onUnreadCountChange, userRole }) => { // Added onUnreadCountChange prop
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { data, loading, error, refetch } = useQuery(MY_NOTIFICATIONS_QUERY);
 
   useEffect(() => {
@@ -51,6 +53,41 @@ const NotificationCenter = ({ onUnreadCountChange }) => { // Added onUnreadCount
     markAllNotificationsAsRead();
   };
 
+  const handleNotificationClick = (notification) => {
+    // Mark as read when clicked
+    if (!notification.isRead) {
+      markNotificationAsRead({ variables: { id: notification.id } });
+    }
+
+    // Navigate based on notification type and user role
+    switch (notification.type) {
+      case 'NEW_ORDER':
+        if (userRole === 'seller') {
+          navigate(`/dashboard`); // Seller goes to dashboard for new orders
+        } else { // Buyer or Admin
+          navigate(`/order-confirmation/${notification.relatedEntityId}`);
+        }
+        break;
+      case 'ORDER_STATUS_UPDATE':
+        navigate(`/order-confirmation/${notification.relatedEntityId}`); // Buyer goes to order confirmation
+        break;
+      case 'NEW_PRODUCT_REVIEW':
+        navigate(`/product-details/${notification.relatedEntityId}`);
+        break;
+      case 'STORE_DEACTIVATED':
+        navigate(`/dashboard`); // Or a more specific store management page
+        break;
+      case 'PRODUCT_DEACTIVATED':
+        navigate(`/dashboard`); // Or a more specific product management page
+        break;
+      // Add more cases for other notification types
+      default:
+        // If no specific route, just close the notification center or do nothing
+        console.log('No specific route for this notification type:', notification.type);
+        break;
+    }
+  };
+
   return (
     <Paper elevation={3} sx={{ p: 3, mt: 3 }}>
       <Box mb={2}>
@@ -71,8 +108,9 @@ const NotificationCenter = ({ onUnreadCountChange }) => { // Added onUnreadCount
       ) : (
         <List>
           {notifications.map((notification) => (
-            <ListItem
+            <ListItemButton
               key={notification.id}
+              onClick={() => handleNotificationClick(notification)}
               secondaryAction={
                 !notification.isRead && (
                   <IconButton edge="end" aria-label="mark as read" onClick={() => handleMarkAsRead(notification.id)}>
@@ -91,7 +129,7 @@ const NotificationCenter = ({ onUnreadCountChange }) => { // Added onUnreadCount
                 secondary={new Date(notification.createdAt).toLocaleString()}
                 primaryTypographyProps={{ variant: 'body2' }} 
               />
-            </ListItem>
+            </ListItemButton>
           ))}
         </List>
       )}

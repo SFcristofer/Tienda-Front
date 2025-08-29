@@ -42,8 +42,7 @@ const ProductDetailPage = () => {
   const navigate = useNavigate();
 
   const handleBuyNow = (product) => {
-    addToCart(product);
-    navigate('/cart');
+    navigate('/checkout', { state: { product } });
   };
 
   if (loading) return <CircularProgress />;
@@ -54,17 +53,33 @@ const ProductDetailPage = () => {
 
   const sliderSettings = {
     dots: false,
-    infinite: relatedProducts.length > 4,
+    infinite: relatedProducts.length > 3,
     speed: 500,
-    slidesToShow: 4,
+    slidesToShow: 3,
     slidesToScroll: 1,
+    responsive: [
+      {
+        breakpoint: 960,
+        settings: {
+          slidesToShow: 2,
+        },
+      },
+      {
+        breakpoint: 600,
+        settings: {
+          slidesToShow: 1,
+        },
+      },
+    ],
   };
 
   return (
     <Container sx={{ mt: 4 }}>
       <Grid container spacing={4}>
-        <Grid item xs={12} md={6}>
-          <CardMedia component="img" image={product.imageUrl || '/images/product-placeholder.svg'} alt={product.name} sx={{ maxHeight: 400, objectFit: 'contain' }} />
+        <Grid item xs={12}>
+          <Box sx={{ height: 400, width: '100%', overflow: 'hidden' }}>
+            <CardMedia component="img" image={product.imageUrl || '/images/product-placeholder.svg'} alt={product.name} sx={{ height: '100%', objectFit: 'cover', width: '100%' }} />
+          </Box>
           <Typography variant="h3" gutterBottom sx={{ mt: 2 }}>{product.name}</Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
             <Rating value={product.averageRating} precision={0.5} readOnly />
@@ -85,27 +100,7 @@ const ProductDetailPage = () => {
           </Box>
         </Grid>
 
-        <Grid item xs={12} md={6}>
-          <Box sx={{ mt: { xs: 6, md: 0 } }}>
-            <Typography variant="h5" gutterBottom>{t('relatedProducts')}</Typography>
-            <Divider sx={{ mb: 3 }} />
-            {relatedProductsLoading ? <CircularProgress /> : relatedProductsError ? <Alert severity="error">{t('errorLoadingRelated')}</Alert> : relatedProducts.length === 0 ? <Typography>{t('noRelatedProducts')}</Typography> : (
-              <Slider {...sliderSettings}>
-                {relatedProducts.map((p) => (
-                  <Box key={p.id} sx={{ p: 1 }}>
-                    <Card component={Link} to={`/products/${p.id}`} elevation={2} sx={{ textDecoration: 'none', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                      <CardMedia component="img" height="140" image={p.imageUrl || '/images/product-placeholder.svg'} alt={p.name} sx={{ objectFit: 'cover' }} />
-                      <CardContent>
-                        <Typography gutterBottom variant="h6" component="div">{p.name}</Typography>
-                        <Typography variant="h6" sx={{ mt: 1 }}>${p.price}</Typography>
-                      </CardContent>
-                    </Card>
-                  </Box>
-                ))}
-              </Slider>
-            )}
-          </Box>
-        </Grid>
+        
       </Grid>
 
       <Box sx={{ mt: 6 }}>
@@ -124,6 +119,66 @@ const ProductDetailPage = () => {
           <Typography>{t('noReviewsYet')}</Typography>
         )}
         <ProductReviewForm productId={id} />
+      </Box>
+
+      <Box sx={{ mt: 6 }}>
+        <Typography variant="h5" gutterBottom>{t('relatedProducts')}</Typography>
+        <Divider sx={{ mb: 3 }} />
+        {relatedProductsLoading ? <CircularProgress /> : relatedProductsError ? <Alert severity="error">{t('errorLoadingRelated')}</Alert> : relatedProducts.length === 0 ? <Typography>{t('noRelatedProducts')}</Typography> : (
+          <Slider {...sliderSettings}>
+            {relatedProducts.map((p) => (
+              <Box key={p.id} sx={{ p: 1 }}>
+                <Card sx={{ textDecoration: 'none', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <Link to={`/products/${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <Box sx={{ height: 160, overflow: 'hidden' }}>
+                      <CardMedia
+                        component="img"
+                        height="100%"
+                        image={p.imageUrl || '/images/product-placeholder.svg'}
+                        alt={p.name}
+                        sx={{ objectFit: 'cover', width: '100%' }}
+                      />
+                    </Box>
+                    <CardContent sx={{ flexGrow: 1, p: 2 }}>
+                      <Typography
+                        gutterBottom
+                        variant="h6"
+                        component="div"
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        {p.name}
+                      </Typography>
+                    </CardContent>
+                  </Link>
+                  <CardContent sx={{ p: 2, pt: 0 }}>
+                    <Typography variant="h5" sx={{ mt: 'auto', fontWeight: 'bold', color: 'primary.main' }}>
+                      ${p.price.toFixed(2)}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<AddShoppingCartIcon />}
+                        onClick={(e) => { e.stopPropagation(); addToCart(p); }}
+                        sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 'bold' }}
+                      >
+                        {t('addToCart')}
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={(e) => { e.stopPropagation(); handleBuyNow(p); }}
+                        sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 'bold' }}
+                      >
+                        {t('buyNow')}
+                      </Button>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Box>
+            ))}
+          </Slider>
+        )}
       </Box>
     </Container>
   );

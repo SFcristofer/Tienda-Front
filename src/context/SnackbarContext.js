@@ -1,51 +1,52 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { Snackbar, Alert } from '@mui/material';
+import React, { createContext, useState, useContext } from 'react';
+import { Snackbar, Alert, Button } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 
-const SnackbarContext = createContext(null);
+const SnackbarContext = createContext();
 
 export const SnackbarProvider = ({ children }) => {
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'info',
-  });
+  const [open, setOpen] = useState(false);
+  const [message, setMessage] = useState('');
+  const [severity, setSeverity] = useState('info');
+  const [action, setAction] = useState(null);
+  const navigate = useNavigate();
 
-  const showSnackbar = useCallback((message, severity = 'info') => {
-    setSnackbar({
-      open: true,
-      message,
-      severity,
-    });
-  }, []);
+  const showSnackbar = (message, severity = 'info', action = null) => {
+    setMessage(message);
+    setSeverity(severity);
+    setAction(action);
+    setOpen(true);
+  };
 
   const handleClose = (event, reason) => {
     if (reason === 'clickaway') {
       return;
     }
-    setSnackbar((prev) => ({ ...prev, open: false }));
+    setOpen(false);
   };
+
+  const renderAction = () => {
+    if (!action) return null;
+    return (
+      <Button color="inherit" size="small" onClick={() => {
+        navigate(action.path);
+        handleClose();
+      }}>
+        {action.label}
+      </Button>
+    );
+  }
 
   return (
     <SnackbarContext.Provider value={{ showSnackbar }}>
       {children}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-      >
-        <Alert onClose={handleClose} severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
+      <Snackbar open={open} autoHideDuration={6000} onClose={handleClose}>
+        <Alert onClose={handleClose} severity={severity} sx={{ width: '100%' }} action={renderAction()}>
+          {message}
         </Alert>
       </Snackbar>
     </SnackbarContext.Provider>
   );
 };
 
-export const useSnackbar = () => {
-  const context = useContext(SnackbarContext);
-  if (!context) {
-    throw new Error('useSnackbar must be used within a SnackbarProvider');
-  }
-  return context;
-};
+export const useSnackbar = () => useContext(SnackbarContext);

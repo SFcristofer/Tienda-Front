@@ -58,7 +58,7 @@ const UserProfile = () => {
   const [tabValue, setTabValue] = useState(0);
   const [openAddressDialog, setOpenAddressDialog] = useState(false);
   const [currentAddress, setCurrentAddress] = useState(null);
-  const [addressForm, setAddressForm] = useState({ street: '', city: '', state: '', zipCode: '', country: '', isDefault: false });
+  const [addressForm, setAddressForm] = useState({ street: '', city: '', state: '', zipCode: '', country: '', phoneNumber: '', isDefault: false });
   const [openDeleteAddressConfirmDialog, setOpenDeleteAddressConfirmDialog] = useState(false);
   const [addressToDeleteId, setAddressToDeleteId] = useState(null);
 
@@ -116,14 +116,11 @@ const UserProfile = () => {
 
   const handleSaveAddress = async (event) => {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const values = Object.fromEntries(formData.entries());
-    values.isDefault = formData.get('isDefault') === 'on';
     try {
       if (currentAddress) {
-        await updateAddress({ variables: { input: { id: currentAddress.id, ...values } } });
+        await updateAddress({ variables: { input: { id: currentAddress.id, ...addressForm } } });
       } else {
-        await createAddress({ variables: { input: values } });
+        await createAddress({ variables: { input: addressForm } });
       }
     } catch (err) {
       setSnackbar({ open: true, message: `${t('errorSavingAddress')}: ${err.message}`, severity: 'error' });
@@ -152,6 +149,12 @@ const UserProfile = () => {
     }
   };
 
+  const handleNumericInputChange = (e) => {
+    const { name, value } = e.target;
+    const sanitizedValue = value.replace(/[^0-9]/g, '');
+    setAddressForm({ ...addressForm, [name]: sanitizedValue });
+  };
+
   return (
     <Box sx={{ mt: 4 }}>
       <Paper elevation={3} sx={{ p: 4 }}>
@@ -175,7 +178,7 @@ const UserProfile = () => {
             <Box component="form" onSubmit={handleUpdateProfile} sx={{ mt: 2 }}>
               <TextField margin="normal" required fullWidth label={t('name')} name="name" defaultValue={user.name} />
               <TextField margin="normal" required fullWidth label={t('emailAddress')} name="email" type="email" defaultValue={user.email} disabled />
-              <TextField margin="normal" fullWidth label={t('phoneNumber')} name="phoneNumber" defaultValue={user.phoneNumber} />
+              <TextField margin="normal" fullWidth label={t('phoneNumber')} name="phoneNumber" value={addressForm.phoneNumber} onChange={handleNumericInputChange} />
               <Button type="submit" variant="contained" sx={{ mt: 2 }}>{t('updateProfile')}</Button>
             </Box>
             <Typography variant="h5" gutterBottom sx={{ mt: 4 }}>{t('accountManagement')}</Typography>
@@ -194,8 +197,8 @@ const UserProfile = () => {
               {addresses.length === 0 ? <ListItem><ListItemText primary={t('noAddressesFound')} /></ListItem> : addresses.map((address) => (
                 <ListItem key={address.id} secondaryAction={
                   <Box>
-                    <IconButton edge="end" aria-label="edit" onClick={() => handleOpenAddressDialog(address)}><EditIcon /></IconButton>
-                    <IconButton edge="end" aria-label="delete" onClick={() => { setAddressToDeleteId(address.id); setOpenDeleteAddressConfirmDialog(true); }}><DeleteIcon /></IconButton>
+                    <IconButton edge="end" aria-label={t('edit')} onClick={() => handleOpenAddressDialog(address)}><EditIcon /></IconButton>
+                    <IconButton edge="end" aria-label={t('delete')} onClick={() => { setAddressToDeleteId(address.id); setOpenDeleteAddressConfirmDialog(true); }}><DeleteIcon /></IconButton>
                   </Box>
                 }>
                   <ListItemText primary={`${address.street}, ${address.city}, ${address.state} ${address.zipCode}, ${address.country}`} secondary={address.isDefault ? <Chip label={t('default')} size="small" color="primary" /> : null} />
@@ -236,7 +239,7 @@ const UserProfile = () => {
         <Dialog open={openDeactivateConfirm} onClose={() => setOpenDeactivateConfirm(false)}><DialogTitle>{t('confirmDeactivateTitle')}</DialogTitle><DialogContent><Typography>{t('confirmDeactivate')}</Typography></DialogContent><DialogActions><Button onClick={() => setOpenDeactivateConfirm(false)}>{t('cancel')}</Button><Button onClick={() => deactivateAccount()} color="warning" autoFocus>{t('deactivate')}</Button></DialogActions></Dialog>
         <Dialog open={openDeleteConfirm} onClose={() => setOpenDeleteConfirm(false)}><DialogTitle>{t('confirmDeleteTitle')}</DialogTitle><DialogContent><Typography>{t('confirmDelete')}</Typography></DialogContent><DialogActions><Button onClick={() => setOpenDeleteConfirm(false)}>{t('cancel')}</Button><Button onClick={() => deleteAccount()} color="error" autoFocus>{t('delete')}</Button></DialogActions></Dialog>
         <Dialog open={openDeleteAddressConfirmDialog} onClose={() => setOpenDeleteAddressConfirmDialog(false)}><DialogTitle>{t('confirmDeleteAddressTitle')}</DialogTitle><DialogContent><Typography>{t('confirmDeleteAddress')}</Typography></DialogContent><DialogActions><Button onClick={() => setOpenDeleteAddressConfirmDialog(false)}>{t('cancel')}</Button><Button onClick={handleDeleteAddress} color="error" autoFocus>{t('delete')}</Button></DialogActions></Dialog>
-        <Dialog open={openAddressDialog} onClose={() => setOpenAddressDialog(false)}><DialogTitle>{currentAddress ? t('editAddress') : t('addNewAddress')}</DialogTitle><DialogContent><Box component="form" onSubmit={handleSaveAddress} id="address-form" sx={{ mt: 2 }}><TextField margin="normal" required fullWidth label={t('street')} name="street" value={addressForm.street} onChange={(e) => setAddressForm({...addressForm, street: e.target.value})} /><TextField margin="normal" required fullWidth label={t('city')} name="city" value={addressForm.city} onChange={(e) => setAddressForm({...addressForm, city: e.target.value})} /><TextField margin="normal" required fullWidth label={t('state')} name="state" value={addressForm.state} onChange={(e) => setAddressForm({...addressForm, state: e.target.value})} /><TextField margin="normal" required fullWidth label={t('zipCode')} name="zipCode" value={addressForm.zipCode} onChange={(e) => setAddressForm({...addressForm, zipCode: e.target.value})} /><TextField margin="normal" required fullWidth label={t('country')} name="country" value={addressForm.country} onChange={(e) => setAddressForm({...addressForm, country: e.target.value})} /><TextField margin="normal" required fullWidth label={t('phoneNumber')} name="phoneNumber" value={addressForm.phoneNumber || ''} onChange={(e) => setAddressForm({...addressForm, phoneNumber: e.target.value})} /><FormControlLabel control={<Checkbox name="isDefault" checked={addressForm.isDefault} onChange={(e) => setAddressForm({...addressForm, isDefault: e.target.checked})} />} label={t('setAsDefault')} /></Box></DialogContent><DialogActions><Button onClick={() => setOpenAddressDialog(false)}>{t('cancel')}</Button><Button type="submit" form="address-form" variant="contained">{t('save')}</Button></DialogActions></Dialog>
+        <Dialog open={openAddressDialog} onClose={() => setOpenAddressDialog(false)}><DialogTitle>{currentAddress ? t('editAddress') : t('addNewAddress')}</DialogTitle><DialogContent><Box component="form" onSubmit={handleSaveAddress} id="address-form" sx={{ mt: 2 }}><TextField margin="normal" required fullWidth label={t('street')} name="street" value={addressForm.street} onChange={(e) => setAddressForm({...addressForm, street: e.target.value})} /><TextField margin="normal" required fullWidth label={t('city')} name="city" value={addressForm.city} onChange={(e) => setAddressForm({...addressForm, city: e.target.value})} /><TextField margin="normal" required fullWidth label={t('state')} name="state" value={addressForm.state} onChange={(e) => setAddressForm({...addressForm, state: e.target.value})} /><TextField margin="normal" required fullWidth label={t('zipCode')} name="zipCode" value={addressForm.zipCode} onChange={handleNumericInputChange} /><TextField margin="normal" required fullWidth label={t('country')} name="country" value={addressForm.country} onChange={(e) => setAddressForm({...addressForm, country: e.target.value})} /><TextField margin="normal" required fullWidth label={t('phoneNumber')} name="phoneNumber" value={addressForm.phoneNumber || ''} onChange={handleNumericInputChange} /><FormControlLabel control={<Checkbox name="isDefault" checked={addressForm.isDefault} onChange={(e) => setAddressForm({...addressForm, isDefault: e.target.checked})} />} label={t('setAsDefault')} /></Box></DialogContent><DialogActions><Button onClick={() => setOpenAddressDialog(false)}>{t('cancel')}</Button><Button type="submit" form="address-form" variant="contained">{t('save')}</Button></DialogActions></Dialog>
       </Paper>
     </Box>
   );

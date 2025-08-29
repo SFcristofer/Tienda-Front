@@ -2,10 +2,13 @@ import React, { Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './i18n'; // Importar la configuración de i18n
+import { BrowserRouter as Router } from 'react-router-dom';
 import { ApolloProvider, ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
 import { onError } from '@apollo/client/link/error';
 import { CartProvider } from './context/CartContext';
+import { SnackbarProvider } from './context/SnackbarContext';
+import { RegionProvider } from './context/RegionContext'; // Importamos el nuevo proveedor
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import theme from './theme'; // Importamos nuestro tema
 
@@ -73,12 +76,18 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <ApolloProvider client={client}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline /> {/* Normaliza los estilos y aplica el color de fondo */}
-        <CartProvider>
-          <App />
-        </CartProvider>
-      </ThemeProvider>
+      <RegionProvider>
+        <ThemeProvider theme={theme}>
+          <Router>
+            <CssBaseline /> {/* Normaliza los estilos y aplica el color de fondo */}
+            <SnackbarProvider>
+              <CartProvider>
+                <App />
+              </CartProvider>
+            </SnackbarProvider>
+          </Router>
+        </ThemeProvider>
+      </RegionProvider>
     </ApolloProvider>
   </React.StrictMode>
 );

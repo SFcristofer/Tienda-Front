@@ -4,7 +4,8 @@ import { useQuery } from '@apollo/client';
 import { useTranslation } from 'react-i18next';
 import { GET_ALL_PRODUCTS, GET_ALL_CATEGORIES } from '../graphql/queries';
 import { useCart } from '../context/CartContext';
-import { Link as RouterLink } from 'react-router-dom';
+import { useRegion } from '../context/RegionContext'; // Importar hook
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { Container, Typography, Grid, Card, CardContent, CardMedia, Button, Box, CircularProgress, Alert, Divider, Drawer, List, ListItem, ListItemText, Checkbox, FormGroup, FormControlLabel, TextField, Slider, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -12,25 +13,42 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 const ProductsPage = () => {
   const { t } = useTranslation();
   const { addToCart } = useCart();
+  const navigate = useNavigate();
+  const { region: country, loading: regionLoading } = useRegion(); // Usar hook y renombrar region a country
+
+  const handleBuyNow = (product) => {
+    navigate('/checkout', { state: { product } });
+  };
 
   const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const { loading: loadingCategories, error: errorCategories, data: categoriesData } = useQuery(GET_ALL_CATEGORIES);
   const categories = categoriesData?.getAllCategories || [];
 
   const { loading, error, data } = useQuery(GET_ALL_PRODUCTS, {
+    skip: regionLoading || !country, // No ejecutar hasta tener el país
     variables: {
+      country: country, // Pasar el país
       categoryId: selectedCategoryIds.length > 0 ? selectedCategoryIds : null,
       minPrice: minPrice ? parseFloat(minPrice) : null,
       maxPrice: maxPrice ? parseFloat(maxPrice) : null,
-      search: searchQuery || null,
     },
     fetchPolicy: 'network-only',
   });
+
+  const formatPrice = (price, currencyCode) => {
+    let locale = undefined;
+    if (currencyCode === 'MXN') {
+      locale = 'es-MX';
+    }
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currencyCode,
+    }).format(price);
+  };
 
   const handleCategoryChange = (event) => {
     const { value } = event.target;
@@ -43,7 +61,6 @@ const ProductsPage = () => {
     setSelectedCategoryIds([]);
     setMinPrice('');
     setMaxPrice('');
-    setSearchQuery('');
   };
 
   const toggleDrawer = (open) => (event) => {
@@ -59,8 +76,7 @@ const ProductsPage = () => {
   const areFiltersActive =
     selectedCategoryIds.length > 0 ||
     minPrice !== '' ||
-    maxPrice !== '' ||
-    searchQuery !== '';
+    maxPrice !== '';
 
   // Group products by category
   const groupedProducts = products.reduce((acc, product) => {
@@ -72,7 +88,7 @@ const ProductsPage = () => {
     return acc;
   }, {});
 
-  if (loading || loadingCategories) return <CircularProgress sx={{ display: 'block', margin: 'auto', mt: 8 }} />;
+  if (loading || loadingCategories || regionLoading) return <CircularProgress sx={{ display: 'block', margin: 'auto', mt: 8 }} />;
   if (error) return <Alert severity="error">{error.message}</Alert>;
   if (errorCategories) return <Alert severity="error">{errorCategories.message}</Alert>;
 
@@ -135,15 +151,6 @@ const ProductsPage = () => {
             />
           </Box>
 
-          {/* Search Filter */}
-          <TextField
-            label={t('search')}
-            fullWidth
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-
           <Button
             variant="outlined"
             fullWidth
@@ -163,7 +170,7 @@ const ProductsPage = () => {
         products.length > 0 ? (
           <Grid container spacing={4}>
             {products.map((product) => (
-              <Grid item key={product.id} xs={12} sm={6} md={4}>
+              <Grid item key={product.id} xs={12} sm={6} md={6}>
                 <Card sx={{
                   height: '100%',
                   display: 'flex',
@@ -175,41 +182,52 @@ const ProductsPage = () => {
                     boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
                   }
                 }}>
-                  <CardMedia
-                    component="img"
-                    height="200"
-                    image={product.imageUrl || '/images/product-placeholder.svg'}
-                    alt={product.name}
-                    sx={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px' }}
-                  />
-                  <CardContent sx={{ flexGrow: 1, p: 2 }}>
-                    <Typography 
-                      gutterBottom 
-                      variant="h6" 
-                      component={RouterLink} 
-                      to={`/products/${product.id}`} 
-                      sx={{ textDecoration: 'none', color: 'inherit', fontWeight: 'bold' }}
-                    >
-                      {product.name}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      {t('store')}: {product.store.name}
-                    </Typography>
+                  <RouterLink to={`/products/${product.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <CardMedia
+                      component="img"
+                      height="160"
+                      image={product.imageUrl || '/images/product-placeholder.svg'}
+                      alt={product.name}
+                      sx={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px', objectFit: 'contain', width: '100%' }}
+                    />
+                    <CardContent sx={{ flexGrow: 1, p: 2 }}>
+                      <Typography 
+                        gutterBottom 
+                        variant="h6" 
+                        component="div" 
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        {product.name}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        {t('store')}: {product.store.name}
+                      </Typography>
+                    </CardContent>
+                  </RouterLink>
+                  <CardContent sx={{ p: 2, pt: 0 }}>
                     <Typography variant="h5" sx={{ mt: 'auto', fontWeight: 'bold', color: 'primary.main' }}>
-                      ${product.price.toFixed(2)}
+                      {formatPrice(product.price, product.currency)}
                     </Typography>
+                    <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                      <Button 
+                        variant="contained" 
+                        size="small" 
+                        startIcon={<AddShoppingCartIcon />} 
+                        onClick={(e) => { e.stopPropagation(); addToCart(product); }}
+                        sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 'bold' }}
+                      >
+                        {t('addToCart')}
+                      </Button>
+                      <Button 
+                        variant="outlined" 
+                        size="small" 
+                        onClick={(e) => { e.stopPropagation(); handleBuyNow(product); }}
+                        sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 'bold' }}
+                      >
+                        {t('buyNow')}
+                      </Button>
+                    </Box>
                   </CardContent>
-                  <Box sx={{ p: 2, pt: 0 }}>
-                    <Button 
-                      fullWidth 
-                      variant="contained" 
-                      startIcon={<AddShoppingCartIcon />} 
-                      onClick={() => addToCart(product)}
-                      sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 'bold' }}
-                    >
-                      {t('addToCart')}
-                    </Button>
-                  </Box>
                 </Card>
               </Grid>
             ))}
@@ -230,7 +248,7 @@ const ProductsPage = () => {
               </React.Fragment>
               <Grid container spacing={4}>
                 {productsInCategory.map((product) => (
-                  <Grid item key={product.id} xs={12} sm={6} md={4}>
+                  <Grid item key={product.id} xs={12} sm={6} md={6}>
                     <Card sx={{
                       height: '100%',
                       display: 'flex',
@@ -242,41 +260,52 @@ const ProductsPage = () => {
                         boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
                       }
                     }}>
-                      <CardMedia
-                        component="img"
-                        height="200"
-                        image={product.imageUrl || '/images/product-placeholder.svg'}
-                        alt={product.name}
-                        sx={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px' }}
-                      />
-                      <CardContent sx={{ flexGrow: 1, p: 2 }}>
-                        <Typography 
-                          gutterBottom 
-                          variant="h6" 
-                          component={RouterLink} 
-                          to={`/products/${product.id}`} 
-                          sx={{ textDecoration: 'none', color: 'inherit', fontWeight: 'bold' }}
-                        >
-                          {product.name}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                          {t('store')}: {product.store.name}
-                        </Typography>
+                      <RouterLink to={`/products/${product.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                        <CardMedia
+                          component="img"
+                          height="160"
+                          image={product.imageUrl || '/images/product-placeholder.svg'}
+                          alt={product.name}
+                          sx={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px', objectFit: 'contain', width: '100%' }}
+                        />
+                        <CardContent sx={{ flexGrow: 1, p: 2 }}>
+                          <Typography 
+                            gutterBottom 
+                            variant="h6" 
+                            component="div" 
+                            sx={{ fontWeight: 'bold' }}
+                          >
+                            {product.name}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            {t('store')}: {product.store.name}
+                          </Typography>
+                        </CardContent>
+                      </RouterLink>
+                      <CardContent sx={{ p: 2, pt: 0 }}>
                         <Typography variant="h5" sx={{ mt: 'auto', fontWeight: 'bold', color: 'primary.main' }}>
-                          ${product.price.toFixed(2)}
+                          {formatPrice(product.price, product.currency)}
                         </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                          <Button 
+                            variant="contained" 
+                            size="small" 
+                            startIcon={<AddShoppingCartIcon />} 
+                            onClick={(e) => { e.stopPropagation(); addToCart(product); }}
+                            sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 'bold' }}
+                          >
+                            {t('addToCart')}
+                          </Button>
+                          <Button 
+                            variant="outlined" 
+                            size="small" 
+                            onClick={(e) => { e.stopPropagation(); handleBuyNow(product); }}
+                            sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 'bold' }}
+                          >
+                            {t('buyNow')}
+                          </Button>
+                        </Box>
                       </CardContent>
-                      <Box sx={{ p: 2, pt: 0 }}>
-                        <Button 
-                          fullWidth 
-                          variant="contained" 
-                          startIcon={<AddShoppingCartIcon />} 
-                          onClick={() => addToCart(product)}
-                          sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 'bold' }}
-                        >
-                          {t('addToCart')}
-                        </Button>
-                      </Box>
                     </Card>
                   </Grid>
                 ))}

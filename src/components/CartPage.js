@@ -27,6 +27,20 @@ const CartPage = () => {
 
   const groupedCarts = getGroupedCartItemsByStore();
 
+  const formatPrice = (price, currencyCode) => {
+    let locale = undefined;
+    const effectiveCurrencyCode = currencyCode || 'USD'; // Usamos 'USD' como predeterminado
+
+    if (effectiveCurrencyCode === 'MXN') {
+      locale = 'es-MX';
+    }
+
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: effectiveCurrencyCode,
+    }).format(price);
+  };
+
   const handleQuantityChange = (productId, e) => {
     const quantity = e.target.value;
     if (quantity > 0) {
@@ -64,7 +78,7 @@ const CartPage = () => {
                   secondaryAction={
                     <IconButton
                       edge="end"
-                      aria-label="delete"
+                      aria-label={t('delete')}
                       onClick={() => removeFromCart(item.product.id)}
                     >
                       <DeleteIcon />
@@ -87,7 +101,7 @@ const CartPage = () => {
                     secondary={
                       <Box>
                         <Typography variant="body2" color="text.secondary">
-                          {t('price')}: ${item.product.price.toFixed(2)}
+                          {t('price')}: {formatPrice(item.product.price, item.product.currency)}
                         </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
                           <TextField
@@ -99,7 +113,7 @@ const CartPage = () => {
                             size="small"
                           />
                           <Typography variant="body1" fontWeight="bold">
-                            {t('subtotal')}: ${(item.quantity * item.product.price).toFixed(2)}
+                            {t('subtotal')}: {formatPrice(item.quantity * item.product.price, item.product.currency)}
                           </Typography>
                         </Box>
                       </Box>
@@ -110,7 +124,7 @@ const CartPage = () => {
             </List>
             <Divider sx={{ my: 2 }} />
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6">{t('storeTotal')}: ${cart.totalAmount.toFixed(2)}</Typography>
+              <Typography variant="h6">{t('storeTotal')}: {formatPrice(cart.totalAmount, cart.items[0].product.currency)}</Typography>
               <Button
                 variant="contained"
                 color="secondary"

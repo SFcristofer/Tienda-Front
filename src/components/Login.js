@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import { useMutation, gql, useApolloClient } from '@apollo/client';
 import { useTranslation } from 'react-i18next'; // Importar hook de traducción
+import { useCart } from '../context/CartContext';
 
 // Define the GraphQL mutations
 const LOGIN_USER = gql`
@@ -33,6 +34,7 @@ const Login = () => {
   const { t } = useTranslation(); // Hook para obtener la función de traducción
   const navigate = useNavigate();
   const client = useApolloClient();
+  const { mergeCartsOnLogin } = useCart();
   const [formData, setFormData] = useState({
     email: '',
     password: '',

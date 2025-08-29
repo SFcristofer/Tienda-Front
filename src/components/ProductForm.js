@@ -3,10 +3,7 @@ import { TextField, Button, Box, Paper, Grid, FormControl, InputLabel, Select, M
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { Controller } from 'react-hook-form';
 
-const ProductForm = ({ register, handleSubmit, errors, control, categories, productImageUrl, productImageFileName, handleProductImageChange, t }) => {
-
-  console.log('ProductForm - productImageUrl:', productImageUrl);
-  console.log('ProductForm - productImageFileName:', productImageFileName);
+const ProductForm = ({ register, errors, control, categories, productImageUrl, productImageFileName, handleProductImageChange, t, onSubmit }) => {
 
   const commonTextFieldProps = {
     fullWidth: true,
@@ -21,7 +18,7 @@ const ProductForm = ({ register, handleSubmit, errors, control, categories, prod
   });
 
   return (
-    <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2, p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Box component="form" id="product-form" onSubmit={onSubmit} sx={{ mt: 2, p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
         {/* Nombre */}
           <TextField
             label={t('productName')}
@@ -48,6 +45,24 @@ const ProductForm = ({ register, handleSubmit, errors, control, categories, prod
             type="number"
             {...commonTextFieldProps}
           />
+
+        {/* Currency */}
+        <FormControl {...commonTextFieldProps} error={!!errors.currency}>
+            <InputLabel>{t('currency')}</InputLabel>
+            <Controller
+              name="currency"
+              control={control}
+              rules={{ required: true }}
+              defaultValue="USD" // Default currency
+              render={({ field }) => (
+                <Select {...field} label={t('currency')} size="medium">
+                  <MenuItem value="USD">USD</MenuItem>
+                  <MenuItem value="MXN">MXN</MenuItem>
+                  <MenuItem value="NIO">NIO</MenuItem>
+                </Select>
+              )}
+            />
+          </FormControl>
 
         {/* Stock */}
           <TextField

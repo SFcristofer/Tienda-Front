@@ -58,6 +58,7 @@ export const GET_MY_STORE = gql`
 
 export const GET_ALL_PRODUCTS = gql`
   query GetAllProducts(
+    $country: String!,
     $categoryId: [ID],
     $minPrice: Float,
     $maxPrice: Float,
@@ -67,6 +68,7 @@ export const GET_ALL_PRODUCTS = gql`
     $storeId: ID
   ) {
     getAllProducts(
+      country: $country,
       categoryId: $categoryId,
       minPrice: $minPrice,
       maxPrice: $maxPrice,
@@ -79,6 +81,7 @@ export const GET_ALL_PRODUCTS = gql`
       name
       description
       price
+      currency
       imageUrl
       store {
         id
@@ -93,8 +96,14 @@ export const GET_ALL_PRODUCTS = gql`
 `;
 
 export const GET_ALL_STORES = gql`
-  query GetAllStores {
-    getAllStores {
+  query GetAllStores($country: String!, $search: String, $sortBy: StoreSortBy, $sortOrder: SortOrder, $storeCategoryIds: [ID]) {
+    getAllStores(
+      country: $country,
+      search: $search,
+      sortBy: $sortBy,
+      sortOrder: $sortOrder,
+      storeCategoryIds: $storeCategoryIds
+    ) {
       id
       name
       description
@@ -195,6 +204,7 @@ export const MY_CART_QUERY = gql`
           name
           description
           price
+          currency
           imageUrl
           store {
             id
@@ -534,7 +544,11 @@ export const GET_ALL_STORE_CATEGORIES = gql`
   }
 `;
 
-// Add this at the end of the file
+export const GET_AVAILABLE_STORE_COUNTRIES = gql`
+  query GetAvailableStoreCountries {
+    getAvailableStoreCountries
+  }
+`;
 export const GET_USER_BY_ID = gql`
   query GetUserById($id: ID!) {
     user(id: $id) {
@@ -560,6 +574,27 @@ export const GET_FILTERED_STORES = gql`
       owner {
         name
       }
+    }
+  }
+`;
+
+export const GET_STORES_BY_LOCATION = gql`
+  query GetStoresByLocation($latitude: Float!, $longitude: Float!, $radius: Float!) {
+    getStoresByLocation(latitude: $latitude, longitude: $longitude, radius: $radius) {
+      id
+      name
+      description
+      imageUrl
+      street
+      city
+      state
+      zipCode
+      country
+      phoneNumber
+      contactEmail
+      latitude
+      longitude
+      averageRating
     }
   }
 `;

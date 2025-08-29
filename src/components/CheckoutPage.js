@@ -29,11 +29,12 @@ import {
 
 const CheckoutPage = () => {
   const { t } = useTranslation();
-  const { getGroupedCartItemsByStore, clearCart, removePurchasedItems } = useCart();
+  const { getGroupedCartItemsByStore, removePurchasedItems } = useCart();
   const { data: addressesData, loading: addressesLoading, error: addressesError, refetch: refetchAddresses } = useQuery(MY_ADDRESSES_QUERY);
 
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [openAddressDialog, setOpenAddressDialog] = useState(false);
+  const [addressForm, setAddressForm] = useState({ street: '', city: '', state: '', zipCode: '', country: '', phoneNumber: '', isDefault: false });
 
   const [createOrder, { loading: createOrderLoading, error: createOrderError }] = useMutation(CREATE_ORDER);
   const [createAddress] = useMutation(CREATE_ADDRESS, {
@@ -45,13 +46,30 @@ const CheckoutPage = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const queryParams = new URLSearchParams(location.search);
-  const storeId = queryParams.get('storeId');
 
-  const currentCart = useMemo(() => {
-    const allCarts = getGroupedCartItemsByStore();
-    return allCarts.find((cart) => cart.store.id === storeId);
-  }, [getGroupedCartItemsByStore, storeId]);
+  const checkoutData = useMemo(() => {
+    const { product: buyNowProduct } = location.state || {};
+
+    if (buyNowProduct) {
+      // Flow: Buy Now
+      return {
+        isBuyNow: true,
+        store: buyNowProduct.store,
+        items: [{ product: buyNowProduct, quantity: 1 }],
+        totalAmount: buyNowProduct.price,
+      };
+    } else {
+      // Flow: Checkout from Cart
+      const queryParams = new URLSearchParams(location.search);
+      const storeId = queryParams.get('storeId');
+      const allCarts = getGroupedCartItemsByStore();
+      const cartForStore = allCarts.find((cart) => cart.store.id === storeId);
+      return {
+        isBuyNow: false,
+        ...cartForStore,
+      };
+    }
+  }, [location.state, location.search, getGroupedCartItemsByStore]);
 
   if (addressesLoading) return <CircularProgress />;
   if (addressesError) return <Alert severity="error">{t('errorLoadingAddresses', { message: addressesError.message })}</Alert>;
@@ -63,27 +81,18 @@ const CheckoutPage = () => {
       alert(t('selectDeliveryAddress'));
       return;
     }
-    if (!currentCart || currentCart.items.length === 0) {
+    if (!checkoutData || !checkoutData.items || checkoutData.items.length === 0) {
       alert(t('cartEmpty'));
       return;
     }
-
-    console.log('--- CheckoutPage Debug ---');
-    console.log('storeId from URL:', storeId);
-    console.log('currentCart object:', currentCart);
-    console.log('Items being sent to createOrder:');
-    currentCart.items.forEach(item => {
-      console.log(`  - Product: ${item.product.name} (ID: ${item.product.id}), Store ID: ${item.product.store?.id}`);
-    });
-    console.log('--------------------------');
 
     try {
       const { data } = await createOrder({
         variables: {
           input: {
-            storeId: currentCart.store.id,
+            storeId: checkoutData.store.id,
             addressId: selectedAddressId,
-            items: currentCart.items.map((item) => ({
+            items: checkoutData.items.map((item) => ({
               productId: item.product.id,
               quantity: item.quantity,
               priceAtOrder: item.product.price,
@@ -91,35 +100,46 @@ const CheckoutPage = () => {
           },
         },
       });
+      
       const orderId = data.createOrder.id;
-      const purchasedProductIds = currentCart.items.map(item => item.product.id);
-      removePurchasedItems(purchasedProductIds); // Use new function
+
+      // Only remove items from cart if it's not a "Buy Now" flow
+      if (!checkoutData.isBuyNow) {
+        const purchasedProductIds = checkoutData.items.map(item => item.product.id);
+        removePurchasedItems(purchasedProductIds);
+      }
+
       navigate(`/order-confirmation/${orderId}`);
     } catch (err) {
-      // Error is already handled by the 'createOrderError' state from useMutation
       console.error('Error placing order:', err);
     }
+  };
+
+  const handleNumericInputChange = (e) => {
+    const { name, value } = e.target;
+    const sanitizedValue = value.replace(/[^0-9]/g, '');
+    setAddressForm({ ...addressForm, [name]: sanitizedValue });
   };
 
   return (
     <Container maxWidth="md" sx={{ mt: 4 }}>
       <Typography variant="h4" gutterBottom>{t('checkout')}</Typography>
 
-      {!currentCart ? (
+      {!checkoutData || !checkoutData.items || checkoutData.items.length === 0 ? (
         <Alert severity="warning">{t('checkoutCartEmptyOrInvalid')}</Alert>
       ) : (
         <Paper elevation={3} sx={{ p: 3 }}>
-          <Alert severity="info" sx={{ mb: 3 }}><strong>{t('directDealModel')}:</strong> {t('directDealNotice')}</Alert>
+          <Alert severity="info" sx={{ mb: 3 }}>{t('directDealNotice')}</Alert>
           <Typography variant="h5" gutterBottom>{t('orderSummary')}</Typography>
-          <Box key={currentCart.store.id} sx={{ mb: 3, p: 2, border: '1px solid #e0e0e0', borderRadius: '8px' }}>
-            <Typography variant="h6">{t('store')}: {currentCart.store.name}</Typography>
+          <Box key={checkoutData.store.id} sx={{ mb: 3, p: 2, border: '1px solid #e0e0e0', borderRadius: '8px' }}>
+            <Typography variant="h6">{t('store')}: {checkoutData.store.name}</Typography>
             <List dense>
-              {currentCart.items.map((item) => (
+              {checkoutData.items.map((item) => (
                 <Typography key={item.product.id}>{item.quantity} x {item.product.name} - ${item.product.price.toFixed(2)}</Typography>
               ))}
             </List>
           </Box>
-          <Typography variant="h5" sx={{ mt: 2 }}>{t('total')}: ${currentCart.totalAmount.toFixed(2)}</Typography>
+          <Typography variant="h5" sx={{ mt: 2 }}>{t('total')}: ${checkoutData.totalAmount.toFixed(2)}</Typography>
 
           <Box sx={{ mt: 4 }}>
             <Typography variant="h5" gutterBottom>{t('deliveryInformation')}</Typography>
@@ -140,7 +160,7 @@ const CheckoutPage = () => {
 
           {createOrderError && <Alert severity="error" sx={{ mt: 2 }}>{t('errorPlacingOrder', { message: createOrderError.message })}</Alert>}
 
-          <Button variant="contained" color="secondary" fullWidth sx={{ mt: 4 }} onClick={handlePlaceOrder} disabled={createOrderLoading || !currentCart || addresses.length === 0 || !selectedAddressId}>
+          <Button variant="contained" color="secondary" fullWidth sx={{ mt: 4 }} onClick={handlePlaceOrder} disabled={createOrderLoading || !checkoutData || addresses.length === 0 || !selectedAddressId}>
             {createOrderLoading ? t('placingOrder') : t('placeOrder')}
           </Button>
         </Paper>
@@ -151,28 +171,20 @@ const CheckoutPage = () => {
         <DialogContent>
           <Box component="form" id="new-address-form" onSubmit={async (e) => {
             e.preventDefault();
-            const formData = new FormData(e.currentTarget);
-            const street = formData.get('street');
-            const city = formData.get('city');
-            const state = formData.get('state');
-            const zipCode = formData.get('zipCode');
-            const country = formData.get('country');
-            const phoneNumber = formData.get('phoneNumber');
-            const isDefault = formData.get('isDefault') === 'on';
             try {
-              await createAddress({ variables: { input: { street, city, state, zipCode, country, phoneNumber, isDefault } } });
+              await createAddress({ variables: { input: addressForm } });
               setOpenAddressDialog(false);
             } catch (err) {
               alert(`${t('errorCreatingAddress')}: ${err.message}`);
             }
           }}>
-            <TextField margin="normal" required fullWidth label={t('street')} name="street" />
-            <TextField margin="normal" required fullWidth label={t('city')} name="city" />
-            <TextField margin="normal" required fullWidth label={t('state')} name="state" />
-            <TextField margin="normal" required fullWidth label={t('zipCode')} name="zipCode" />
-            <TextField margin="normal" required fullWidth label={t('country')} name="country" />
-            <TextField margin="normal" required fullWidth label={t('phoneNumber')} name="phoneNumber" />
-            <FormControlLabel control={<Checkbox name="isDefault" />} label={t('setAsDefault')} />
+            <TextField margin="normal" required fullWidth label={t('street')} name="street" value={addressForm.street} onChange={(e) => setAddressForm({ ...addressForm, street: e.target.value })} />
+            <TextField margin="normal" required fullWidth label={t('city')} name="city" value={addressForm.city} onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })} />
+            <TextField margin="normal" required fullWidth label={t('state')} name="state" value={addressForm.state} onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })} />
+            <TextField margin="normal" required fullWidth label={t('zipCode')} name="zipCode" value={addressForm.zipCode} onChange={handleNumericInputChange} />
+            <TextField margin="normal" required fullWidth label={t('country')} name="country" value={addressForm.country} onChange={(e) => setAddressForm({ ...addressForm, country: e.target.value })} />
+            <TextField margin="normal" required fullWidth label={t('phoneNumber')} name="phoneNumber" value={addressForm.phoneNumber} onChange={handleNumericInputChange} />
+            <FormControlLabel control={<Checkbox name="isDefault" checked={addressForm.isDefault} onChange={(e) => setAddressForm({ ...addressForm, isDefault: e.target.checked })} />} label={t('setAsDefault')} />
           </Box>
         </DialogContent>
         <DialogActions>

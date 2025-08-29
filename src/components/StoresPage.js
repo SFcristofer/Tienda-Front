@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery } from '@apollo/client';
 import { useTranslation } from 'react-i18next';
 import {
@@ -15,27 +15,38 @@ import {
 } from '@mui/material';
 import { GET_ALL_STORES } from '../graphql/queries';
 import { Link as RouterLink } from 'react-router-dom';
+import { useRegion } from '../context/RegionContext'; // 1. Importar el hook de región
 
 const StoresPage = () => {
   const { t } = useTranslation();
+  const { region: country, loading: regionLoading } = useRegion(); // 2. Usar el hook
+
   const { data, loading, error } = useQuery(GET_ALL_STORES, {
-    variables: { sortBy: 'id', sortOrder: 'DESC' },
+    // 3. No ejecutar la consulta hasta que tengamos el país
+    skip: regionLoading || !country,
+    variables: { 
+      country: country, // 4. Pasar el país como variable
+      sortBy: 'CREATED_AT', 
+      sortOrder: 'DESC' 
+    },
     fetchPolicy: 'network-only',
   });
 
-  if (loading) return <CircularProgress />;
+  // 5. Manejar el estado de carga de la región
+  if (regionLoading || loading) return <CircularProgress />;
   if (error) return <Alert severity="error">{t('errorLoadingStores', { message: error.message })}</Alert>;
 
-  const stores = data?.getAllStores || [];
+  const storesToDisplay = data?.getAllStores || [];
 
   return (
     <Container sx={{ mt: 4 }} maxWidth="lg">
       <Typography variant="h4" gutterBottom>{t('exploreStores')}</Typography>
-      {stores.length === 0 ? (
+
+      {storesToDisplay.length === 0 ? (
         <Typography>{t('noStoresAvailable')}</Typography>
       ) : (
         <List>
-          {stores.map((store) => (
+          {storesToDisplay.map((store) => (
             <React.Fragment key={store.id}>
               <ListItem
                 button
@@ -48,7 +59,7 @@ const StoresPage = () => {
                     variant="rounded"
                     src={store.imageUrl || '/images/store-placeholder.svg'}
                     alt={store.name}
-                    sx={{ width: 100, height: 100, mr: 3 }}
+                    sx={{ width: 100, height: 100, mr: 3, objectFit: 'contain' }}
                   />
                 </ListItemAvatar>
                 <ListItemText

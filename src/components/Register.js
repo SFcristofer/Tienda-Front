@@ -11,10 +11,15 @@ import {
   Alert,
   Divider,
   Card,
-  CardContent
+  CardContent,
+  InputAdornment,
+  IconButton
 } from '@mui/material';
 import { useMutation, gql, useApolloClient } from '@apollo/client';
 import { useTranslation } from 'react-i18next'; // Importar hook de traducción
+import { useCart } from '../context/CartContext';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
 // Define the GraphQL mutations
 const REGISTER_USER = gql`
@@ -33,20 +38,29 @@ const Register = () => {
   const { t } = useTranslation(); // Hook para obtener la función de traducción
   const navigate = useNavigate();
   const client = useApolloClient();
+  const { mergeCartsOnLogin } = useCart();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
+    confirmPassword: '',
   });
   const [error, setError] = useState('');
+  const [confirmPasswordError, setConfirmPasswordError] = useState('');
+  const [phoneNumberError, setPhoneNumberError] = useState('');
+  const [emailError, setEmailError] = useState('');
 
-  const { name, email, phoneNumber, password } = formData;
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const { name, email, phoneNumber, password, confirmPassword } = formData;
 
   // Mutation for standard registration
   const [registerUser, { loading }] = useMutation(REGISTER_USER, {
     onCompleted: (data) => {
       localStorage.setItem('token', data.registerUser);
       client.refetchQueries({ include: 'all' });
+      mergeCartsOnLogin(); // Call merge function
       navigate('/');
     },
     onError: (err) => {
@@ -60,6 +74,7 @@ const Register = () => {
       if (data.googleLogin) {
         localStorage.setItem('token', data.googleLogin);
         await client.refetchQueries({ include: ['Me'] });
+        mergeCartsOnLogin(); // Call merge function
         navigate('/');
       }
     },
@@ -89,16 +104,61 @@ const Register = () => {
   };
 
   const onChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (e.target.name === 'phoneNumber') {
+      // Allow only numbers and a leading '+'
+      const value = e.target.value;
+      const cleanedValue = value.startsWith('+') ? '+' + value.substring(1).replace(/[^0-9]/g, '') : value.replace(/[^0-9]/g, '');
+      setFormData({ ...formData, [e.target.name]: cleanedValue });
+      setPhoneNumberError(''); // Clear error on change
+    } else {
+      setFormData({ ...formData, [e.target.name]: e.target.value });
+    }
+  };
+
+  const handleClickShowPassword = () => setShowPassword((show) => !show);
+  const handleMouseDownPassword = (event) => {
+    event.preventDefault();
+  };
+
+  const handleClickShowConfirmPassword = () => setShowConfirmPassword((show) => !show);
+  const handleMouseDownConfirmPassword = (event) => {
+    event.preventDefault();
   };
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!name || !email || !phoneNumber || !password) {
+    setConfirmPasswordError(''); // Clear previous error
+    setPhoneNumberError(''); // Clear previous error
+    setEmailError(''); // Clear previous error
+
+    if (!name || !email || !phoneNumber || !password || !confirmPassword) {
       setError(t('allFieldsRequired'));
       return;
     }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setEmailError(t('invalidEmailFormat')); // Assuming a translation key
+      setError(t('invalidEmailFormat'));
+      return;
+    }
+
+    // Phone number validation (basic: only digits and optional leading +)
+    const phoneRegex = /^\+?[0-9]+$/;
+    if (!phoneRegex.test(phoneNumber)) {
+      setPhoneNumberError(t('invalidPhoneNumberFormat')); // Assuming a translation key
+      setError(t('invalidPhoneNumberFormat'));
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setConfirmPasswordError(t('passwordsDoNotMatch'));
+      setError(t('passwordsDoNotMatch'));
+      return;
+    }
+
     registerUser({ variables: { name, email, phoneNumber, password } });
   };
 
@@ -132,6 +192,8 @@ const Register = () => {
             autoComplete="email"
             value={email}
             onChange={onChange}
+            error={Boolean(emailError)}
+            helperText={emailError}
           />
           <TextField
             margin="normal"
@@ -143,6 +205,9 @@ const Register = () => {
             autoComplete="tel"
             value={phoneNumber}
             onChange={onChange}
+            type="tel"
+            error={Boolean(phoneNumberError)}
+            helperText={phoneNumberError}
           />
           <TextField
             margin="normal"
@@ -150,11 +215,53 @@ const Register = () => {
             fullWidth
             name="password"
             label={t('password')}
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             id="password"
             autoComplete="new-password"
             value={password}
             onChange={onChange}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="toggle password visibility"
+                    onClick={handleClickShowPassword}
+                    onMouseDown={handleMouseDownPassword}
+                    edge="end"
+                  >
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            name="confirmPassword"
+            label={t('confirmPassword')}
+            type={showConfirmPassword ? 'text' : 'password'}
+            id="confirmPassword"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={onChange}
+            error={Boolean(confirmPasswordError)}
+            helperText={confirmPasswordError}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="toggle confirm password visibility"
+                    onClick={handleClickShowConfirmPassword}
+                    onMouseDown={handleMouseDownConfirmPassword}
+                    edge="end"
+                  >
+                    {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
           />
           <Button
             type="submit"

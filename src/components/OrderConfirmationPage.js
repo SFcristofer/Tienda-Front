@@ -27,7 +27,7 @@ const OrderConfirmationPage = () => {
   useEffect(() => {
     const fetchOrder = async () => {
       try {
-        const response = await axios.get(`http://localhost:4000/api/orders/${orderId}`);
+        const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/orders/${orderId}`);
         setOrder(response.data);
       } catch (err) {
         setError(t('errorLoadingOrderDetails'));
@@ -71,7 +71,7 @@ const OrderConfirmationPage = () => {
         <Button variant="contained" color="primary" sx={{ mt: 2 }} onClick={handleDownloadReceipt}>{t('downloadReceipt')}</Button>
       </Paper>
 
-      <Alert severity="info" sx={{ mt: 4 }}><strong>{t('nextStepsTitle')}:</strong> {t('nextSteps')}</Alert>
+      <Alert severity="info" sx={{ mt: 4 }}><strong>{t('nextSteps')}</strong></Alert>
 
       <Box sx={{ mt: 4, p: 3, border: '1px solid #e0e0e0', borderRadius: '8px' }} id="receipt-details">
         <Typography variant="h5" gutterBottom>{t('orderSummary')}</Typography>

@@ -18,25 +18,42 @@ import {
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import Slider from 'react-slick';
 import { useCart } from '../context/CartContext';
+import { useRegion } from '../context/RegionContext'; // Importar hook
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 
 const Home = () => {
   const { t } = useTranslation();
-  const { data: productsData, loading: productsLoading, error: productsError } = useQuery(GET_ALL_PRODUCTS);
+  const { region, countriesLoading } = useRegion(); // Usar hook
+
+  const { data: productsData, loading: productsLoading, error: productsError } = useQuery(GET_ALL_PRODUCTS, {
+    skip: countriesLoading || !region, // Skip si no hay país
+    variables: { country: region }, // Pasar país
+  });
   const { data: storesData, loading: storesLoading, error: storesError } = useQuery(GET_ALL_STORES, {
-    variables: { sortBy: 'createdAt', sortOrder: 'DESC' },
+    skip: countriesLoading || !region, // Skip si no hay país
+    variables: { country: region, sortBy: 'CREATED_AT', sortOrder: 'DESC' }, // Pasar país
   });
 
   const { addToCart } = useCart();
   const navigate = useNavigate();
 
-  const handleBuyNow = (product) => {
-    addToCart(product);
-    navigate('/cart');
+  const formatPrice = (price, currencyCode) => {
+    let locale = undefined;
+    if (currencyCode === 'MXN') {
+      locale = 'es-MX';
+    }
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currencyCode,
+    }).format(price);
   };
 
-  if (productsLoading || storesLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress color="secondary" /></Box>;
+  const handleBuyNow = (product) => {
+    navigate('/checkout', { state: { product } });
+  };
+
+  if (countriesLoading || productsLoading || storesLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress color="secondary" /></Box>;
   if (productsError) return <Alert severity="error">{t('errorLoadingProducts', { message: productsError.message })}</Alert>;
   if (storesError) return <Alert severity="error">{t('errorLoadingStores', { message: storesError.message })}</Alert>;
 
@@ -78,7 +95,7 @@ const Home = () => {
               {featuredStores.map((store) => (
                 <Box key={store.id} sx={{ p: 1 }}>
                   <Card component={RouterLink} to={`/stores/${store.id}`} sx={{ textDecoration: 'none', height: '100%', position: 'relative' }}>
-                    <CardMedia component="img" height="140" image={store.imageUrl || '/images/store-placeholder.svg'} alt={store.name} />
+                    <CardMedia component="img" height="140" image={store.imageUrl || '/images/store-placeholder.svg'} alt={store.name} sx={{ objectFit: 'contain', width: '100%' }} />
                     <CardContent>
                       <Typography gutterBottom variant="h6" component="div">{store.name}</Typography>
                       <Typography variant="body2" color="text.secondary">{store.description}</Typography>
@@ -97,14 +114,18 @@ const Home = () => {
             <Slider {...{...sliderSettings, infinite: false}}>
               {featuredProducts.map((product) => (
                 <Box key={product.id} sx={{ p: 1 }}>
-                  <Card component={RouterLink} to={`/products/${product.id}`} sx={{ textDecoration: 'none', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                    <CardMedia component="img" height="160" image={product.imageUrl || '/images/product-placeholder.svg'} alt={product.name} />
-                    <CardContent>
-                      <Typography gutterBottom variant="h6" component="div">{product.name}</Typography>
-                      <Typography variant="body1" color="text.secondary">${product.price}</Typography>
+                  <Card sx={{ textDecoration: 'none', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <RouterLink to={`/products/${product.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                                            <CardMedia component="img" height="160" image={product.imageUrl || '/images/product-placeholder.svg'} alt={product.name} sx={{ objectFit: 'contain', width: '100%' }} />
+                      <CardContent>
+                        <Typography gutterBottom variant="h6" component="div">{product.name}</Typography>
+                      </CardContent>
+                    </RouterLink>
+                    <CardContent> {/* This CardContent will contain price and buttons */}
+                      <Typography variant="body1" color="text.secondary">{formatPrice(product.price, product.currency)}</Typography>
                       <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-                        <Button variant="contained" size="small" onClick={() => addToCart(product)}>{t('addToCart')}</Button>
-                        <Button variant="outlined" size="small" onClick={() => handleBuyNow(product)}>{t('buyNow')}</Button>
+                        <Button variant="contained" size="small" onClick={(e) => { e.stopPropagation(); addToCart(product); }}>{t('addToCart')}</Button>
+                        <Button variant="outlined" size="small" onClick={(e) => { e.stopPropagation(); handleBuyNow(product); }}>{t('buyNow')}</Button>
                       </Box>
                     </CardContent>
                   </Card>
@@ -126,15 +147,19 @@ const Home = () => {
                   <Slider {...{...sliderSettings, infinite: false}}>
                     {storeProducts.map((product) => (
                       <Box key={product.id} sx={{ p: 1 }}>
-                        <Card component={RouterLink} to={`/products/${product.id}`} sx={{ textDecoration: 'none', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                          <CardMedia component="img" height="160" image={product.imageUrl || '/images/product-placeholder.svg'} alt={product.name} />
-                          <CardContent sx={{ flexGrow: 1 }}>
-                            <Typography gutterBottom variant="h6" component="div">{product.name}</Typography>
-                            <Typography variant="body2" color="text.secondary" noWrap>{product.description}</Typography>
-                            <Typography variant="h6" sx={{ mt: 1 }}>${product.price.toFixed(2)}</Typography>
+                        <Card sx={{ textDecoration: 'none', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                          <RouterLink to={`/products/${product.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                            <CardMedia component="img" height="160" image={product.imageUrl || '/images/product-placeholder.svg'} alt={product.name} sx={{ objectFit: 'contain', width: '100%' }} />
+                            <CardContent sx={{ flexGrow: 1 }}>
+                              <Typography gutterBottom variant="h6" component="div">{product.name}</Typography>
+                              <Typography variant="body2" color="text.secondary" noWrap>{product.description}</Typography>
+                            </CardContent>
+                          </RouterLink>
+                          <CardContent> {/* This CardContent will contain price and buttons */}
+                            <Typography variant="h6" sx={{ mt: 1 }}>{formatPrice(product.price, product.currency)}</Typography>
                             <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-                              <Button variant="contained" size="small" onClick={() => addToCart(product)}>{t('addToCart')}</Button>
-                              <Button variant="outlined" size="small" onClick={() => handleBuyNow(product)}>{t('buyNow')}</Button>
+                              <Button variant="contained" size="small" onClick={(e) => { e.stopPropagation(); addToCart(product); }}>{t('addToCart')}</Button>
+                              <Button variant="outlined" size="small" onClick={(e) => { e.stopPropagation(); handleBuyNow(product); }}>{t('buyNow')}</Button>
                             </Box>
                           </CardContent>
                         </Card>

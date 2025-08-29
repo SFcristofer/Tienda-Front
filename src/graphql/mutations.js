@@ -71,6 +71,7 @@ export const CREATE_PRODUCT = gql`
     $name: String!
     $description: String!
     $price: Float!
+    $currency: String!
     $storeId: ID!
     $imageUrl: String
     $categoryId: ID!
@@ -80,6 +81,7 @@ export const CREATE_PRODUCT = gql`
       name: $name
       description: $description
       price: $price
+      currency: $currency
       storeId: $storeId
       imageUrl: $imageUrl
       categoryId: $categoryId
@@ -97,6 +99,7 @@ export const UPDATE_PRODUCT = gql`
     $name: String
     $description: String
     $price: Float
+    $currency: String
     $imageUrl: String
     $stock: Int
     $categoryId: ID
@@ -106,6 +109,7 @@ export const UPDATE_PRODUCT = gql`
       name: $name
       description: $description
       price: $price
+      currency: $currency
       imageUrl: $imageUrl
       stock: $stock
       categoryId: $categoryId
@@ -114,6 +118,7 @@ export const UPDATE_PRODUCT = gql`
       name
       description
       price
+      currency
       imageUrl
       stock
       category {

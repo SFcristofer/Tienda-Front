@@ -4,31 +4,57 @@ import { useTranslation } from 'react-i18next';
 import { TextField, Button, Typography, Box, Paper, CircularProgress, Alert, List, ListItem, ListItemText, Snackbar, Select, MenuItem, FormControl, InputLabel, Card, CardContent, Grid, CardMedia, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Tabs, Tab, CardActions, AlertTitle } from '@mui/material'; // Add AlertTitle
 import WarningIcon from '@mui/icons-material/Warning'; // Add WarningIcon
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import AddIcon from '@mui/icons-material/Add';
 import { Link } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { GET_MY_STORE, GET_SELLER_ORDERS, GET_ALL_CATEGORIES, GET_ALL_STORE_CATEGORIES, GET_ALL_STORES } from '../graphql/queries';
 import { CREATE_STORE, CREATE_PRODUCT, UPDATE_ORDER_STATUS, UPDATE_STORE, UPDATE_PRODUCT, DELETE_PRODUCT, UPLOAD_IMAGE } from '../graphql/mutations';
-
 import ProductForm from './ProductForm';
+
+import { useRegion } from '../context/RegionContext';
 
 const SellerDashboard = () => {
   const { t } = useTranslation();
-  const { register, handleSubmit, formState: { errors }, reset, control } = useForm();
+  const { country } = useRegion(); // Get country from context
+  const { register, handleSubmit, formState: { errors }, reset, control } = useForm({
+    defaultValues: {
+      productName: '',
+      productDescription: '',
+      productPrice: '',
+      productStock: '',
+      categoryId: '',
+      currency: 'USD',
+    }
+  });
   const [tabValue, setTabValue] = useState(0);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [selectedStoreCategories, setSelectedStoreCategories] = useState([]);
+  const [openCreateCategoryModal, setOpenCreateCategoryModal] = useState(false);
+  const [showNewStoreCategoryForm, setShowNewStoreCategoryForm] = useState(false);
 
   const [openAddProductModal, setOpenAddProductModal] = useState(false); // New state for add product modal
 
   const handleOpenAddProductModal = () => { // New handler
     setOpenAddProductModal(true);
-    reset(); // Reset react-hook-form fields
+    reset({
+      productName: '',
+      productDescription: '',
+      productPrice: '',
+      productStock: '',
+      categoryId: '',
+      currency: 'USD', // Default currency
+    });
     setProductImageUrl(''); // Clear image preview
     setProductImageFileName(''); // Clear image file name
+    setEditingProduct(null); // Ensure editingProduct is null when opening add modal
   };
 
-  const handleCloseAddProductModal = () => { // New handler
+  const handleCloseAddProductModal = () => {
     setOpenAddProductModal(false);
+    reset({}); // Ensure form fields are cleared
+    setProductImageUrl(''); // Clear image preview
+    setProductImageFileName(''); // Clear image file name
+    setEditingProduct(null); // Clear any editing product data
   };
 
   const [storeData, setStoreData] = useState({
@@ -43,6 +69,12 @@ const SellerDashboard = () => {
     phoneNumber: '',
     contactEmail: '',
   });
+
+  useEffect(() => {
+    if (country) {
+      setStoreData(prev => ({ ...prev, country }));
+    }
+  }, [country]);
 
   const { data: storeDataDb, loading: loadingStore, error: errorStore, refetch: refetchStore } = useQuery(GET_MY_STORE, { fetchPolicy: 'network-only' });
 
@@ -121,6 +153,10 @@ const SellerDashboard = () => {
   const [updateOrderStatus] = useMutation(UPDATE_ORDER_STATUS, { onCompleted: () => { refetchOrders(); setSnackbar({ open: true, message: t('orderStatusUpdatedSuccess'), severity: 'success' }); }, onError: (err) => setSnackbar({ open: true, message: `${t('errorUpdatingOrderStatus')}: ${err.message}`, severity: 'error' }) });
   const [uploadImage] = useMutation(UPLOAD_IMAGE);
 
+  
+
+  
+
   const handleTabChange = (event, newValue) => setTabValue(newValue);
 
   const handleStoreInputChange = (e) => {
@@ -135,11 +171,11 @@ const SellerDashboard = () => {
   };
 
   const handleCreateProduct = handleSubmit(async (data) => {
-    await createProduct({ variables: { name: data.productName, description: data.productDescription, price: parseFloat(data.productPrice), storeId: store.id, imageUrl: productImageUrl, categoryId: data.categoryId, stock: parseInt(data.productStock) } });
+    await createProduct({ variables: { name: data.productName, description: data.productDescription, price: parseFloat(data.productPrice), currency: data.currency, storeId: store.id, imageUrl: productImageUrl, categoryId: data.categoryId, stock: parseInt(data.productStock) } });
   });
 
   const handleUpdateProduct = handleSubmit(async (data) => {
-    await updateProduct({ variables: { id: editingProduct.id, name: data.productName, description: data.productDescription, price: parseFloat(data.productPrice), imageUrl: productImageUrl, stock: parseInt(data.productStock), categoryId: data.categoryId } });
+    await updateProduct({ variables: { id: editingProduct.id, name: data.productName, description: data.productDescription, price: parseFloat(data.productPrice), currency: data.currency, imageUrl: productImageUrl, stock: parseInt(data.productStock), categoryId: data.categoryId } });
     setOpenEditProductDialog(false); // Close dialog on success
   });
 
@@ -163,6 +199,7 @@ const SellerDashboard = () => {
       productPrice: product.price,
       productStock: product.stock,
       categoryId: product.category.id,
+      currency: product.currency,
     });
     setOpenEditProductDialog(true);
   };
@@ -226,9 +263,10 @@ const SellerDashboard = () => {
           <TextField fullWidth label={t('storeDescription')} name="description" value={storeData.description} onChange={handleStoreInputChange} margin="normal" multiline rows={3} required />
           
           <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ mt: 3, mb: 1 }}>{t('storeCategoriesSubtitle')}</Typography>
-          <FormControl fullWidth margin="normal">
-            <InputLabel>{t('selectCategories')}</InputLabel>
+          <FormControl fullWidth margin="normal" sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
+            <InputLabel id="store-categories-label" sx={{ flexShrink: 0 }}>{t('selectCategories')}</InputLabel>
             <Select
+              labelId="store-categories-label"
               multiple
               value={selectedStoreCategories}
               onChange={(e) => setSelectedStoreCategories(e.target.value)}
@@ -240,6 +278,7 @@ const SellerDashboard = () => {
                   })}
                 </Box>
               )}
+              sx={{ flexGrow: 1, mr: 1 }}
             >
               {storeCategories.map((category) => (
                 <MenuItem key={category.id} value={category.id}>
@@ -247,6 +286,7 @@ const SellerDashboard = () => {
                 </MenuItem>
               ))}
             </Select>
+            {/* Removed category creation button for sellers */}
           </FormControl>
 
           <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ mt: 3, mb: 1 }}>{t('storeLocation')}</Typography>
@@ -326,6 +366,10 @@ const SellerDashboard = () => {
             setEditStoreContactEmail(store.contactEmail || '');
             setOpenEditStoreDialog(true);
           }} sx={{ mt: 2 }}>{t('editStoreDetails')}</Button>
+
+          
+
+          
         </Paper>
       )}
 
@@ -346,7 +390,6 @@ const SellerDashboard = () => {
             <DialogContent>
               <ProductForm
                 register={register}
-                handleSubmit={handleSubmit(handleCreateProduct)}
                 errors={errors}
                 control={control}
                 categories={categories}
@@ -354,11 +397,12 @@ const SellerDashboard = () => {
                 productImageFileName={productImageFileName}
                 handleProductImageChange={handleProductImageChange}
                 t={t}
+                onSubmit={handleSubmit(handleCreateProduct)}
               />
             </DialogContent>
             <DialogActions>
               <Button onClick={handleCloseAddProductModal}>{t('cancel')}</Button>
-              <Button onClick={handleSubmit(handleCreateProduct)} variant="contained">{t('addProduct')}</Button>
+              <Button type="submit" form="product-form" variant="contained">{t('addProduct')}</Button>
             </DialogActions>
           </Dialog>
 
@@ -373,11 +417,10 @@ const SellerDashboard = () => {
           <Dialog open={openEditStoreDialog} onClose={() => setOpenEditStoreDialog(false)}><DialogTitle>{t('editStoreDetails')}</DialogTitle><DialogContent><TextField autoFocus margin="dense" label={t('storeName')} type="text" fullWidth value={editStoreName} onChange={(e) => setEditStoreName(e.target.value)} /><TextField margin="dense" label={t('storeDescription')} type="text" fullWidth multiline rows={4} value={editStoreDescription} onChange={(e) => setEditStoreDescription(e.target.value)} /><TextField margin="dense" label={t('street')} type="text" fullWidth value={editStoreStreet} onChange={(e) => setEditStoreStreet(e.target.value)} /><TextField margin="dense" label={t('city')} type="text" fullWidth value={editStoreCity} onChange={(e) => setEditStoreCity(e.target.value)} /><TextField margin="dense" label={t('state')} type="text" fullWidth value={editStoreState} onChange={(e) => setEditStoreState(e.target.value)} /><TextField margin="dense" label={t('zipCode')} type="text" fullWidth value={editStoreZipCode} onChange={(e) => setEditStoreZipCode(e.target.value)} /><TextField margin="dense" label={t('country')} type="text" fullWidth value={editStoreCountry} onChange={(e) => setEditStoreCountry(e.target.value)} /><TextField margin="dense" label={t('phoneNumber')} type="text" fullWidth value={editStorePhoneNumber} onChange={(e) => setEditStorePhoneNumber(e.target.value)} /><TextField margin="dense" label={t('contactEmail')} type="text" fullWidth value={editStoreContactEmail} onChange={(e) => setEditStoreContactEmail(e.target.value)} /><Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}><Button variant="outlined" component="label" startIcon={<UploadFileIcon />} fullWidth>{t('uploadStoreImage')}<input type="file" hidden accept="image/*" onChange={handleEditStoreImageChange} /></Button>{editStoreImageFileName && (<Typography variant="caption" display="block" sx={{ mt: 1 }}>{t('selectedFile', { fileName: editStoreImageFileName })}</Typography>)}{editStoreImageUrl && (<Box sx={{ mt: 2 }}><img src={editStoreImageUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain' }} /></Box>)}</Paper></DialogContent><DialogActions><Button onClick={() => setOpenEditStoreDialog(false)}>{t('cancel')}</Button><Button onClick={() => updateStore({ variables: { id: store.id, name: editStoreName, description: editStoreDescription, imageUrl: editStoreImageUrl, street: editStoreStreet, city: editStoreCity, state: editStoreState, zipCode: editStoreZipCode, country: editStoreCountry, phoneNumber: editStorePhoneNumber, contactEmail: editStoreContactEmail } })}>{t('save')}</Button></DialogActions></Dialog>
           {editingProduct && (
             <Dialog open={openEditProductDialog} onClose={() => setOpenEditProductDialog(false)} fullWidth maxWidth="sm">
-              <DialogTitle sx={{ textAlign: 'center' }}>{t('addNewProduct')}</DialogTitle>
+              <DialogTitle sx={{ textAlign: 'center' }}>{t('editProduct')}</DialogTitle>
               <DialogContent>
                 <ProductForm
                   register={register}
-                  handleSubmit={handleSubmit(handleUpdateProduct)}
                   errors={errors}
                   control={control}
                   categories={categories}
@@ -385,17 +428,19 @@ const SellerDashboard = () => {
                   productImageFileName={productImageFileName}
                   handleProductImageChange={handleProductImageChange}
                   t={t}
+                  onSubmit={handleSubmit(handleUpdateProduct)}
                 />
               </DialogContent>
               <DialogActions>
-                <Button onClick={handleCloseAddProductModal}>{t('cancel')}</Button>
-                <Button onClick={handleSubmit(handleCreateProduct)} variant="contained">{t('addProduct')}</Button>
+                <Button onClick={() => setOpenEditProductDialog(false)}>{t('cancel')}</Button>
+                <Button type="submit" form="product-form" variant="contained">{t('updateProduct')}</Button>
               </DialogActions>
             </Dialog>
           )}
           <Dialog open={openDeleteProductConfirmDialog} onClose={() => setOpenDeleteProductConfirmDialog(false)}><DialogTitle>{t('confirmProductDeletion')}</DialogTitle><DialogContent><Typography>{t('areYouSureDeleteProduct')}</Typography></DialogContent><DialogActions><Button onClick={() => setOpenDeleteProductConfirmDialog(false)}>{t('cancel')}</Button><Button onClick={handleConfirmDeleteProduct} color="error">{t('delete')}</Button></DialogActions></Dialog>
-          <Dialog open={openStatusConfirmDialog} onClose={() => setOpenStatusConfirmDialog(false)}><DialogTitle>{t('confirmOrderStatusChange')}</DialogTitle><DialogContent><Typography>{t('confirmStatusChange')}</Typography></DialogContent><DialogActions><Button onClick={() => setOpenStatusConfirmDialog(false)}>{t('cancel')}</Button><Button onClick={handleConfirmStatusChange} color="primary">{t('confirm')}</Button></DialogActions></Dialog>
-        </Box>
+
+          {/* Removed category creation dialog for sellers */}
+          </Box>
       
   );
 };
