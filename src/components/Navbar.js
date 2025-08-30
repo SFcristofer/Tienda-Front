@@ -82,7 +82,7 @@ const Navbar = () => {
       <Container maxWidth="lg">
         <Toolbar disableGutters>
           <RouterLink to="/" style={{ textDecoration: 'none', flexGrow: 1 }}>
-            <img src={logo} alt="UniShopp Logo" style={{ height: '80px', width: 'auto', verticalAlign: 'middle', borderRadius: '8px' }} />
+            <img src={logo} alt="UniShopp Logo" style={{ height: '100px', width: 'auto', verticalAlign: 'middle', borderRadius: '8px' }} />
           </RouterLink>
           {isMobile ? (
             <IconButton
