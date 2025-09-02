@@ -146,7 +146,7 @@ const Login = () => {
           </Button>
           <Grid container>
             <Grid item xs>
-              <Link href="#" variant="body2">
+              <Link component={RouterLink} to="/forgot-password" variant="body2">
                 {t('forgotPassword')}
               </Link>
             </Grid>

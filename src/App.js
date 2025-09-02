@@ -3,8 +3,8 @@ import { Route, Routes } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Login from './components/Login';
 import Register from './components/Register';
-
-
+import ForgotPassword from './components/ForgotPassword'; // New import
+import ResetPassword from './components/ResetPassword'; // New import
 
 import Home from './components/Home';
 import Dashboard from './components/Dashboard';
@@ -32,7 +32,8 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            
+            <Route path="/forgot-password" element={<ForgotPassword />} /> {/* New route */}
+            <Route path="/reset-password" element={<ResetPassword />} /> {/* New route */}
             
             
             <Route path="/cart" element={<CartPage />} />
