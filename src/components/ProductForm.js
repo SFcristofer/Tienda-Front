@@ -2,8 +2,12 @@ import React from 'react';
 import { TextField, Button, Box, Paper, Grid, FormControl, InputLabel, Select, MenuItem, Typography } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { Controller } from 'react-hook-form';
+import { useQuery } from '@apollo/client';
+import { GET_ALL_ACTIVE_COUNTRIES } from '../graphql/queries';
 
-const ProductForm = ({ register, errors, control, categories, productImageUrl, productImageFileName, handleProductImageChange, t, onSubmit }) => {
+const ProductForm = ({ register, errors, control, categories, productImageUrl, productImageFileName, handleProductImageChange, t, onSubmit, setValue, watch }) => {
+
+  const { data: countriesData, loading: countriesLoading, error: countriesError } = useQuery(GET_ALL_ACTIVE_COUNTRIES);
 
   const commonTextFieldProps = {
     fullWidth: true,
@@ -39,26 +43,43 @@ const ProductForm = ({ register, errors, control, categories, productImageUrl, p
 
         {/* Precio */}
           <TextField
-            label={t('price')}
+            label={`${t('price')} (${watch('currencySymbol') || ''})`}
             {...register('productPrice', { required: true, valueAsNumber: true, min: 0 })}
             {...getErrorProps('productPrice')}
             type="number"
             {...commonTextFieldProps}
           />
 
+        {/* Hidden fields for currencyCode and currencySymbol */}
+        <input type="hidden" {...register('currencyCode')} />
+        <input type="hidden" {...register('currencySymbol')} />
+
         {/* Currency */}
-        <FormControl {...commonTextFieldProps} error={!!errors.currency}>
-            <InputLabel>{t('currency')}</InputLabel>
+        <FormControl {...commonTextFieldProps} error={!!errors.countryId}>
+            <InputLabel>{t('country')}</InputLabel>
             <Controller
-              name="currency"
+              name="countryId"
               control={control}
               rules={{ required: true }}
-              defaultValue="USD" // Default currency
               render={({ field }) => (
-                <Select {...field} label={t('currency')} size="medium">
-                  <MenuItem value="USD">USD</MenuItem>
-                  <MenuItem value="MXN">MXN</MenuItem>
-                  <MenuItem value="NIO">NIO</MenuItem>
+                <Select
+                  {...field}
+                  label={t('country')}
+                  size="medium"
+                  onChange={(e) => {
+                    field.onChange(e);
+                    const selectedCountry = countriesData?.getAllActiveCountries?.find(c => c.id === e.target.value);
+                    if (selectedCountry) {
+                      setValue('currencyCode', selectedCountry.currencyCode);
+                      setValue('currencySymbol', selectedCountry.currencySymbol);
+                    }
+                  }}
+                >
+                  {countriesData?.getAllActiveCountries?.map((country) => (
+                    <MenuItem key={country.id} value={country.id}>
+                      {country.name} ({country.currencySymbol})
+                    </MenuItem>
+                  ))}
                 </Select>
               )}
             />

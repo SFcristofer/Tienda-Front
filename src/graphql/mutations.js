@@ -15,7 +15,7 @@ export const CREATE_STORE = gql`
     $city: String!
     $state: String!
     $zipCode: String!
-    $country: String
+    $countryId: ID!
     $phoneNumber: String!
     $contactEmail: String!
     $storeCategoryIds: [ID!]
@@ -28,7 +28,7 @@ export const CREATE_STORE = gql`
       city: $city
       state: $state
       zipCode: $zipCode
-      country: $country
+      countryId: $countryId
       phoneNumber: $phoneNumber
       contactEmail: $contactEmail
       storeCategoryIds: $storeCategoryIds
@@ -41,7 +41,10 @@ export const CREATE_STORE = gql`
       city
       state
       zipCode
-      country
+      country {
+        id
+        name
+      }
       phoneNumber
       contactEmail
     }
@@ -49,8 +52,8 @@ export const CREATE_STORE = gql`
 `;
 
 export const UPDATE_STORE = gql`
-  mutation UpdateStore($id: ID!, $name: String, $description: String, $imageUrl: String, $street: String, $city: String, $state: String, $zipCode: String, $country: String, $phoneNumber: String, $contactEmail: String) {
-    updateStore(id: $id, name: $name, description: $description, imageUrl: $imageUrl, street: $street, city: $city, state: $state, zipCode: $zipCode, country: $country, phoneNumber: $phoneNumber, contactEmail: $contactEmail) {
+  mutation UpdateStore($id: ID!, $name: String, $description: String, $imageUrl: String, $street: String, $city: String, $state: String, $zipCode: String, $countryId: ID, $phoneNumber: String, $contactEmail: String) {
+    updateStore(id: $id, name: $name, description: $description, imageUrl: $imageUrl, street: $street, city: $city, state: $state, zipCode: $zipCode, countryId: $countryId, phoneNumber: $phoneNumber, contactEmail: $contactEmail) {
       id
       name
       description
@@ -59,7 +62,10 @@ export const UPDATE_STORE = gql`
       city
       state
       zipCode
-      country
+      country {
+        id
+        name
+      }
       phoneNumber
       contactEmail
     }
@@ -71,21 +77,21 @@ export const CREATE_PRODUCT = gql`
     $name: String!
     $description: String!
     $price: Float!
-    $currency: String!
     $storeId: ID!
     $imageUrl: String
     $categoryId: ID!
     $stock: Int!
+    $countryId: ID!
   ) {
     createProduct(
       name: $name
       description: $description
       price: $price
-      currency: $currency
       storeId: $storeId
       imageUrl: $imageUrl
       categoryId: $categoryId
       stock: $stock
+      countryId: $countryId
     ) {
       id
       name
@@ -99,26 +105,25 @@ export const UPDATE_PRODUCT = gql`
     $name: String
     $description: String
     $price: Float
-    $currency: String
     $imageUrl: String
     $stock: Int
     $categoryId: ID
+    $countryId: ID
   ) {
     updateProduct(
       id: $id
       name: $name
       description: $description
       price: $price
-      currency: $currency
       imageUrl: $imageUrl
       stock: $stock
       categoryId: $categoryId
+      countryId: $countryId
     ) {
       id
       name
       description
       price
-      currency
       imageUrl
       stock
       category {
@@ -502,5 +507,43 @@ export const ADMIN_UPDATE_STORE_CATEGORY = gql`
 export const ADMIN_DELETE_STORE_CATEGORY = gql`
   mutation AdminDeleteStoreCategory($id: ID!) {
     adminDeleteStoreCategory(id: $id)
+  }
+`;
+
+export const ADMIN_DELETE_USER = gql`
+  mutation AdminDeleteUser($userId: ID!) {
+    adminDeleteUser(userId: $userId)
+  }
+`;
+
+export const ADMIN_CREATE_COUNTRY = gql`
+  mutation AdminCreateCountry($name: String!, $code: String!, $currencyCode: String!, $currencySymbol: String!, $isActive: Boolean!) {
+    adminCreateCountry(name: $name, code: $code, currencyCode: $currencyCode, currencySymbol: $currencySymbol, isActive: $isActive) {
+      id
+      name
+      code
+      currencyCode
+      currencySymbol
+      isActive
+    }
+  }
+`;
+
+export const ADMIN_UPDATE_COUNTRY = gql`
+  mutation AdminUpdateCountry($id: ID!, $name: String, $code: String, $currencyCode: String, $currencySymbol: String, $isActive: Boolean) {
+    adminUpdateCountry(id: $id, name: $name, code: $code, currencyCode: $currencyCode, currencySymbol: $currencySymbol, isActive: $isActive) {
+      id
+      name
+      code
+      currencyCode
+      currencySymbol
+      isActive
+    }
+  }
+`;
+
+export const ADMIN_DELETE_COUNTRY = gql`
+  mutation AdminDeleteCountry($id: ID!) {
+    adminDeleteCountry(id: $id)
   }
 `;

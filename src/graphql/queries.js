@@ -31,10 +31,16 @@ export const GET_MY_STORE = gql`
         city
         state
         zipCode
-        country
         phoneNumber
         contactEmail
         averageRating
+        country { # <-- ADD THIS
+          id
+          name
+          code
+          currencyCode
+          currencySymbol
+        }
         products {
           id
           name
@@ -81,7 +87,6 @@ export const GET_ALL_PRODUCTS = gql`
       name
       description
       price
-      currency
       imageUrl
       store {
         id
@@ -90,6 +95,13 @@ export const GET_ALL_PRODUCTS = gql`
       category {
         id
         name
+      }
+      country { # <-- ADD THIS
+        id
+        name
+        code
+        currencyCode
+        currencySymbol
       }
     }
   }
@@ -109,6 +121,10 @@ export const GET_ALL_STORES = gql`
       description
       imageUrl
       owner {
+        name
+      }
+      country {
+        id
         name
       }
     }
@@ -135,7 +151,10 @@ export const GET_STORE_BY_ID = gql`
       city
       state
       zipCode
-      country
+      country {
+        id
+        name
+      }
       phoneNumber
       contactEmail
       storeCategories {
@@ -204,11 +223,17 @@ export const MY_CART_QUERY = gql`
           name
           description
           price
-          currency
           imageUrl
           store {
             id
             name
+          }
+          country { # <-- ADD THIS
+            id
+            name
+            code
+            currencyCode
+            currencySymbol
           }
         }
       }
@@ -259,6 +284,13 @@ export const GET_PRODUCT_BY_ID = gql`
       category {
         id
         name
+      }
+      country { # <-- ADD THIS
+        id
+        name
+        code
+        currencyCode
+        currencySymbol
       }
       reviews {
         id
@@ -329,6 +361,13 @@ export const adminGetAllStores = gql`
         id
       }
       status
+      country { # <-- ADD THIS
+        id
+        name
+        code
+        currencyCode
+        currencySymbol
+      }
     }
   }
 `;
@@ -549,6 +588,32 @@ export const GET_AVAILABLE_STORE_COUNTRIES = gql`
     getAvailableStoreCountries
   }
 `;
+
+export const ADMIN_GET_ALL_COUNTRIES = gql`
+  query AdminGetAllCountries {
+    adminGetAllCountries {
+      id
+      name
+      code
+      currencyCode
+      currencySymbol
+      isActive
+    }
+  }
+`;
+
+export const GET_ALL_ACTIVE_COUNTRIES = gql`
+  query GetAllActiveCountries {
+    getAllActiveCountries {
+      id
+      name
+      code
+      currencyCode
+      currencySymbol
+      isActive
+    }
+  }
+`;
 export const GET_USER_BY_ID = gql`
   query GetUserById($id: ID!) {
     user(id: $id) {
@@ -574,6 +639,10 @@ export const GET_FILTERED_STORES = gql`
       owner {
         name
       }
+      country {
+        id
+        name
+      }
     }
   }
 `;
@@ -589,7 +658,10 @@ export const GET_STORES_BY_LOCATION = gql`
       city
       state
       zipCode
-      country
+      country {
+        id
+        name
+      }
       phoneNumber
       contactEmail
       latitude

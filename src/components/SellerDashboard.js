@@ -7,7 +7,7 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import AddIcon from '@mui/icons-material/Add';
 import { Link } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
-import { GET_MY_STORE, GET_SELLER_ORDERS, GET_ALL_CATEGORIES, GET_ALL_STORE_CATEGORIES, GET_ALL_STORES } from '../graphql/queries';
+import { GET_MY_STORE, GET_SELLER_ORDERS, GET_ALL_CATEGORIES, GET_ALL_STORE_CATEGORIES, GET_ALL_STORES, GET_ALL_ACTIVE_COUNTRIES } from '../graphql/queries';
 import { CREATE_STORE, CREATE_PRODUCT, UPDATE_ORDER_STATUS, UPDATE_STORE, UPDATE_PRODUCT, DELETE_PRODUCT, UPLOAD_IMAGE } from '../graphql/mutations';
 import ProductForm from './ProductForm';
 
@@ -23,7 +23,7 @@ const SellerDashboard = () => {
       productPrice: '',
       productStock: '',
       categoryId: '',
-      currency: 'USD',
+      countryId: '',
     }
   });
   const [tabValue, setTabValue] = useState(0);
@@ -42,7 +42,7 @@ const SellerDashboard = () => {
       productPrice: '',
       productStock: '',
       categoryId: '',
-      currency: 'USD', // Default currency
+      countryId: '',
     });
     setProductImageUrl(''); // Clear image preview
     setProductImageFileName(''); // Clear image file name
@@ -65,18 +65,26 @@ const SellerDashboard = () => {
     city: '',
     state: '',
     zipCode: '',
-    country: '',
+    countryId: '',
     phoneNumber: '',
     contactEmail: '',
   });
 
+  const { data: countriesData, loading: loadingCountries, error: errorCountries } = useQuery(GET_ALL_ACTIVE_COUNTRIES);
+  const { data: storeDataDb, loading: loadingStore, error: errorStore, refetch: refetchStore } = useQuery(GET_MY_STORE, { fetchPolicy: 'network-only' });
+  const { data: ordersData, loading: loadingOrders, error: errorOrders, refetch: refetchOrders } = useQuery(GET_SELLER_ORDERS, { skip: !storeDataDb?.me?.store, fetchPolicy: 'network-only' });
+  const { data: categoriesData, loading: loadingCategories, error: errorCategories } = useQuery(GET_ALL_CATEGORIES);
+  const { data: storeCategoriesData, loading: loadingStoreCategories, error: errorStoreCategories } = useQuery(GET_ALL_STORE_CATEGORIES);
+
   useEffect(() => {
     if (country) {
-      setStoreData(prev => ({ ...prev, country }));
+      // Find the country object from the fetched countries data
+      const selectedCountry = countriesData?.getAllActiveCountries?.find(c => c.code === country);
+      if (selectedCountry) {
+        setStoreData(prev => ({ ...prev, countryId: selectedCountry.id }));
+      }
     }
-  }, [country]);
-
-  const { data: storeDataDb, loading: loadingStore, error: errorStore, refetch: refetchStore } = useQuery(GET_MY_STORE, { fetchPolicy: 'network-only' });
+  }, [country, countriesData]);
 
   const [storeImageFileName, setStoreImageFileName] = useState('');
   const [openEditStoreDialog, setOpenEditStoreDialog] = useState(false);
@@ -88,7 +96,7 @@ const SellerDashboard = () => {
   const [editStoreCity, setEditStoreCity] = useState('');
   const [editStoreState, setEditStoreState] = useState('');
   const [editStoreZipCode, setEditStoreZipCode] = useState('');
-  const [editStoreCountry, setEditStoreCountry] = useState('');
+  const [editStoreCountryId, setEditStoreCountryId] = useState('');
   const [editStorePhoneNumber, setEditStorePhoneNumber] = useState('');
   const [editStoreContactEmail, setEditStoreContactEmail] = useState('');
 
@@ -111,9 +119,6 @@ const SellerDashboard = () => {
 
   const [openStatusConfirmDialog, setOpenStatusConfirmDialog] = useState(false);
   const [statusConfirmDetails, setStatusConfirmDetails] = useState({ orderId: null, newStatus: null });
-  const { data: ordersData, loading: loadingOrders, error: errorOrders, refetch: refetchOrders } = useQuery(GET_SELLER_ORDERS, { skip: !storeDataDb?.me?.store, fetchPolicy: 'network-only' });
-  const { data: categoriesData, loading: loadingCategories, error: errorCategories } = useQuery(GET_ALL_CATEGORIES);
-  const { data: storeCategoriesData, loading: loadingStoreCategories, error: errorStoreCategories } = useQuery(GET_ALL_STORE_CATEGORIES);
 
   const store = storeDataDb?.me?.store;
   const categories = categoriesData?.getAllCategories || [];
@@ -164,11 +169,32 @@ const SellerDashboard = () => {
     setStoreData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleCreateStore = async (e) => {
-    e.preventDefault();
-    if (!storeData.name.trim() || !storeData.description.trim()) return;
-    await createStore({ variables: { ...storeData, storeCategoryIds: selectedStoreCategories } });
+  const handleUpdateStore = async () => {
+    await updateStore({
+      variables: {
+        id: store.id,
+        name: editStoreName,
+        description: editStoreDescription,
+        street: editStoreStreet,
+        city: editStoreCity,
+        state: editStoreState,
+        zipCode: editStoreZipCode,
+        countryId: editStoreCountryId,
+        phoneNumber: editStorePhoneNumber,
+        contactEmail: editStoreContactEmail,
+        imageUrl: editStoreImageUrl,
+      }
+    });
   };
+
+  const handleCreateStore = handleSubmit(async (data) => {
+    const finalVariables = {
+      ...storeData,
+      ...data,
+      storeCategoryIds: selectedStoreCategories
+    };
+    await createStore({ variables: finalVariables });
+  });
 
   const handleCreateProduct = handleSubmit(async (data) => {
     await createProduct({ variables: { name: data.productName, description: data.productDescription, price: parseFloat(data.productPrice), currency: data.currency, storeId: store.id, imageUrl: productImageUrl, categoryId: data.categoryId, stock: parseInt(data.productStock) } });
@@ -199,7 +225,7 @@ const SellerDashboard = () => {
       productPrice: product.price,
       productStock: product.stock,
       categoryId: product.category.id,
-      currency: product.currency,
+      countryId: product.country.id, // Pre-fill countryId
     });
     setOpenEditProductDialog(true);
   };
@@ -294,7 +320,30 @@ const SellerDashboard = () => {
           <TextField fullWidth label={t('city')} name="city" value={storeData.city} onChange={handleStoreInputChange} margin="normal" required />
           <TextField fullWidth label={t('state')} name="state" value={storeData.state} onChange={handleStoreInputChange} margin="normal" required />
           <TextField fullWidth label={t('zipCode')} name="zipCode" value={storeData.zipCode} onChange={handleStoreInputChange} margin="normal" required />
-          <TextField fullWidth label={t('country')} name="country" value={storeData.country} onChange={handleStoreInputChange} margin="normal" />
+          <FormControl fullWidth margin="normal" required>
+            <InputLabel>{t('country')}</InputLabel>
+            <Controller
+              name="countryId"
+              control={control}
+              rules={{ required: true }}
+              render={({ field }) => (
+                <Select
+                  {...field}
+                  label={t('country')}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    setStoreData(prev => ({ ...prev, countryId: e.target.value }));
+                  }}
+                >
+                  {countriesData?.getAllActiveCountries?.map((country) => (
+                    <MenuItem key={country.id} value={country.id}>
+                      {country.name} ({country.currencySymbol})
+                    </MenuItem>
+                  ))}
+                </Select>
+              )}
+            />
+          </FormControl>
 
           <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ mt: 3, mb: 1 }}>{t('contactInformation')}</Typography>
           <TextField fullWidth label={t('phoneNumber')} name="phoneNumber" value={storeData.phoneNumber} onChange={handleStoreInputChange} margin="normal" required />
@@ -361,7 +410,7 @@ const SellerDashboard = () => {
             setEditStoreCity(store.city || '');
             setEditStoreState(store.state || '');
             setEditStoreZipCode(store.zipCode || '');
-            setEditStoreCountry(store.country || '');
+            setEditStoreCountryId(store.country.id); // Set countryId
             setEditStorePhoneNumber(store.phoneNumber || '');
             setEditStoreContactEmail(store.contactEmail || '');
             setOpenEditStoreDialog(true);
@@ -414,7 +463,7 @@ const SellerDashboard = () => {
           )}
 
           <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })}><Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>{snackbar.message}</Alert></Snackbar>
-          <Dialog open={openEditStoreDialog} onClose={() => setOpenEditStoreDialog(false)}><DialogTitle>{t('editStoreDetails')}</DialogTitle><DialogContent><TextField autoFocus margin="dense" label={t('storeName')} type="text" fullWidth value={editStoreName} onChange={(e) => setEditStoreName(e.target.value)} /><TextField margin="dense" label={t('storeDescription')} type="text" fullWidth multiline rows={4} value={editStoreDescription} onChange={(e) => setEditStoreDescription(e.target.value)} /><TextField margin="dense" label={t('street')} type="text" fullWidth value={editStoreStreet} onChange={(e) => setEditStoreStreet(e.target.value)} /><TextField margin="dense" label={t('city')} type="text" fullWidth value={editStoreCity} onChange={(e) => setEditStoreCity(e.target.value)} /><TextField margin="dense" label={t('state')} type="text" fullWidth value={editStoreState} onChange={(e) => setEditStoreState(e.target.value)} /><TextField margin="dense" label={t('zipCode')} type="text" fullWidth value={editStoreZipCode} onChange={(e) => setEditStoreZipCode(e.target.value)} /><TextField margin="dense" label={t('country')} type="text" fullWidth value={editStoreCountry} onChange={(e) => setEditStoreCountry(e.target.value)} /><TextField margin="dense" label={t('phoneNumber')} type="text" fullWidth value={editStorePhoneNumber} onChange={(e) => setEditStorePhoneNumber(e.target.value)} /><TextField margin="dense" label={t('contactEmail')} type="text" fullWidth value={editStoreContactEmail} onChange={(e) => setEditStoreContactEmail(e.target.value)} /><Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}><Button variant="outlined" component="label" startIcon={<UploadFileIcon />} fullWidth>{t('uploadStoreImage')}<input type="file" hidden accept="image/*" onChange={handleEditStoreImageChange} /></Button>{editStoreImageFileName && (<Typography variant="caption" display="block" sx={{ mt: 1 }}>{t('selectedFile', { fileName: editStoreImageFileName })}</Typography>)}{editStoreImageUrl && (<Box sx={{ mt: 2 }}><img src={editStoreImageUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain' }} /></Box>)}</Paper></DialogContent><DialogActions><Button onClick={() => setOpenEditStoreDialog(false)}>{t('cancel')}</Button><Button onClick={() => updateStore({ variables: { id: store.id, name: editStoreName, description: editStoreDescription, imageUrl: editStoreImageUrl, street: editStoreStreet, city: editStoreCity, state: editStoreState, zipCode: editStoreZipCode, country: editStoreCountry, phoneNumber: editStorePhoneNumber, contactEmail: editStoreContactEmail } })}>{t('save')}</Button></DialogActions></Dialog>
+          <Dialog open={openEditStoreDialog} onClose={() => setOpenEditStoreDialog(false)}><DialogTitle>{t('editStoreDetails')}</DialogTitle><DialogContent><TextField autoFocus margin="dense" label={t('storeName')} type="text" fullWidth value={editStoreName} onChange={(e) => setEditStoreName(e.target.value)} /><TextField margin="dense" label={t('storeDescription')} type="text" fullWidth multiline rows={4} value={editStoreDescription} onChange={(e) => setEditStoreDescription(e.target.value)} /><TextField margin="dense" label={t('street')} type="text" fullWidth value={editStoreStreet} onChange={(e) => setEditStoreStreet(e.target.value)} /><TextField margin="dense" label={t('city')} type="text" fullWidth value={editStoreCity} onChange={(e) => setEditStoreCity(e.target.value)} /><TextField margin="dense" label={t('state')} type="text" fullWidth value={editStoreState} onChange={(e) => setEditStoreState(e.target.value)} /><TextField margin="dense" label={t('zipCode')} type="text" fullWidth value={editStoreZipCode} onChange={(e) => setEditStoreZipCode(e.target.value)} /><FormControl fullWidth margin="dense"><InputLabel>{t('country')}</InputLabel><Select value={editStoreCountryId} label={t('country')} onChange={(e) => setEditStoreCountryId(e.target.value)}>{countriesData?.getAllActiveCountries?.map((country) => (<MenuItem key={country.id} value={country.id}>{country.name} ({country.currencySymbol})</MenuItem>))}</Select></FormControl><TextField margin="dense" label={t('phoneNumber')} type="text" fullWidth value={editStorePhoneNumber} onChange={(e) => setEditStorePhoneNumber(e.target.value)} /><TextField margin="dense" label={t('contactEmail')} type="text" fullWidth value={editStoreContactEmail} onChange={(e) => setEditStoreContactEmail(e.target.value)} /><Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}><Button variant="outlined" component="label" startIcon={<UploadFileIcon />} fullWidth>{t('uploadStoreImage')}<input type="file" hidden accept="image/*" onChange={handleEditStoreImageChange} /></Button>{editStoreImageFileName && (<Typography variant="caption" display="block" sx={{ mt: 1 }}>{t('selectedFile', { fileName: editStoreImageFileName })}</Typography>)}{editStoreImageUrl && (<Box sx={{ mt: 2 }}><img src={editStoreImageUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain' }} /></Box>)}</Paper></DialogContent><DialogActions><Button onClick={() => setOpenEditStoreDialog(false)}>{t('cancel')}</Button><Button onClick={() => updateStore({ variables: { id: store.id, name: editStoreName, description: editStoreDescription, imageUrl: editStoreImageUrl, street: editStoreStreet, city: editStoreCity, state: editStoreState, zipCode: editStoreZipCode, country: editStoreCountryId, phoneNumber: editStorePhoneNumber, contactEmail: editStoreContactEmail } })}>{t('save')}</Button></DialogActions></Dialog>
           {editingProduct && (
             <Dialog open={openEditProductDialog} onClose={() => setOpenEditProductDialog(false)} fullWidth maxWidth="sm">
               <DialogTitle sx={{ textAlign: 'center' }}>{t('editProduct')}</DialogTitle>
