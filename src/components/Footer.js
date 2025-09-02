@@ -35,7 +35,7 @@ const Footer = () => {
         bgcolor: '#212529', // Un negro grisáceo oscuro
         color: 'white',
         py: 6,
-        mt: 8, 
+        mt: 8,
       }}
     >
       <Container maxWidth="lg">

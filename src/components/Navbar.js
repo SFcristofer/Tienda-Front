@@ -3,13 +3,13 @@ import React, { useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useQuery, useApolloClient, useLazyQuery } from '@apollo/client';
 import { useTranslation } from 'react-i18next';
-import { AppBar, Toolbar, Button, Box, Badge, IconButton, Container, Avatar, Menu, MenuItem, Typography, TextField, Autocomplete, CircularProgress, useMediaQuery, Drawer, List, ListItemButton, ListItemText, ListItemIcon, Divider } from '@mui/material';
+import { AppBar, Toolbar, Button, Box, Badge, IconButton, Container, Avatar, Menu, MenuItem, Typography, TextField, Autocomplete, CircularProgress, useMediaQuery, Drawer, List, ListItemButton, ListItemText, ListItemIcon, Divider, FormControl, InputLabel, Select } from '@mui/material';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import LanguageIcon from '@mui/icons-material/Language'; // Using a more appropriate icon
 import MenuIcon from '@mui/icons-material/Menu';
 import NotificationCenter from './NotificationCenter';
-import { ME_QUERY, MY_NOTIFICATIONS_QUERY } from '../graphql/queries';
+import { ME_QUERY, MY_NOTIFICATIONS_QUERY, GET_AVAILABLE_STORE_COUNTRIES } from '../graphql/queries'; // Added GET_AVAILABLE_STORE_COUNTRIES
 import { useCart } from '../context/CartContext';
 import { useRegion } from '../context/RegionContext'; // Import useRegion hook
 import logo from '../assets/logo.png';
@@ -28,8 +28,21 @@ const Navbar = () => {
   const client = useApolloClient();
   const token = localStorage.getItem('token');
   const { data } = useQuery(ME_QUERY, { skip: !token });
-  const { region } = useRegion(); // Get region (selected country) from RegionContext
+  const { country, setRegion } = useRegion(); // Get country and setRegion from RegionContext
   const { getTotalItems } = useCart();
+
+  const { data: countriesData } = useQuery(GET_AVAILABLE_STORE_COUNTRIES); // Fetch available countries
+
+  const availableCountries = countriesData?.getAvailableStoreCountries || [];
+
+  console.log('Current selected country (from context):', country);
+  console.log('Available countries:', availableCountries);
+
+  const handleCountryChange = (event) => {
+    const newCountry = event.target.value;
+    setRegion(newCountry);
+    localStorage.setItem('userCountry', newCountry); // Save preference
+  };
 
   const [notificationCount, setNotificationCount] = useState(0);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -96,9 +109,9 @@ const Navbar = () => {
             </IconButton>
           ) : (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {region && (
+              {country && (
                 <Typography variant="subtitle1" sx={{ color: 'text.secondary', mr: 1 }}>
-                  {countryNames[region] || region}
+                  {countryNames[country] || country}
                 </Typography>
               )}
               {user ? (
@@ -142,6 +155,25 @@ const Navbar = () => {
                   <IconButton component={RouterLink} to="/cart" color="secondary"><Badge badgeContent={getTotalItems()} color="error"><ShoppingCartIcon /></Badge></IconButton>
                 </>
               )}
+              {/* Country Selector */}
+              <FormControl variant="standard" sx={{ m: 1, minWidth: 120 }}>
+                <InputLabel id="country-select-label" sx={{ color: 'text.primary' }}>{t('country')}</InputLabel>
+                <Select
+                  labelId="country-select-label"
+                  value={country || ''}
+                  onChange={handleCountryChange}
+                  label={t('country')}
+                  sx={{ color: 'text.primary', '& .MuiSelect-icon': { color: 'text.primary' } }}
+                  renderValue={(selected) => countryNames[selected] || selected} // Render the full country name or code
+                >
+                  {availableCountries.map((code) => (
+                    <MenuItem key={code} value={code}>
+                      {countryNames[code] || code}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              {/* End Country Selector */}
               <Box>
                 <Button
                   onClick={handleLanguageMenuOpen}

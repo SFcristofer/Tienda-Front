@@ -10,7 +10,7 @@ export const useRegion = () => {
 };
 
 export const RegionProvider = ({ children }) => {
-  const [region, setRegion] = useState(null); // 'region' will now represent the selected country
+  const [region, setRegion] = useState(localStorage.getItem('userCountry') || 'US'); // Initialize with stored country or default to 'US'
   const { data: countriesData, loading: countriesLoading, error: countriesError } = useQuery(GET_AVAILABLE_STORE_COUNTRIES);
 
   useEffect(() => {
