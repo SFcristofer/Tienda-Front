@@ -122,7 +122,7 @@ const Home = () => {
                       </CardContent>
                     </RouterLink>
                     <CardContent> {/* This CardContent will contain price and buttons */}
-                      <Typography variant="body1" color="text.secondary">{formatPrice(product.price, product.currency)}</Typography>
+                      <Typography variant="body1" color="text.secondary">{formatPrice(product.price, product.country.currencyCode)}</Typography>
                       <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
                         <Button variant="contained" size="small" onClick={(e) => { e.stopPropagation(); addToCart(product); }}>{t('addToCart')}</Button>
                         <Button variant="outlined" size="small" onClick={(e) => { e.stopPropagation(); handleBuyNow(product); }}>{t('buyNow')}</Button>
@@ -156,7 +156,7 @@ const Home = () => {
                             </CardContent>
                           </RouterLink>
                           <CardContent> {/* This CardContent will contain price and buttons */}
-                            <Typography variant="h6" sx={{ mt: 1 }}>{formatPrice(product.price, product.currency)}</Typography>
+                            <Typography variant="h6" sx={{ mt: 1 }}>{formatPrice(product.price, product.country.currencyCode)}</Typography>
                             <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
                               <Button variant="contained" size="small" onClick={(e) => { e.stopPropagation(); addToCart(product); }}>{t('addToCart')}</Button>
                               <Button variant="outlined" size="small" onClick={(e) => { e.stopPropagation(); handleBuyNow(product); }}>{t('buyNow')}</Button>

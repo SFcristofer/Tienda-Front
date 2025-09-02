@@ -16,6 +16,9 @@ const ProductsPage = () => {
   const navigate = useNavigate();
   const { region: country, loading: regionLoading } = useRegion(); // Usar hook y renombrar region a country
 
+  console.log('ProductsPage - country:', country);
+  console.log('ProductsPage - regionLoading:', regionLoading);
+
   const handleBuyNow = (product) => {
     navigate('/checkout', { state: { product } });
   };
@@ -38,6 +41,10 @@ const ProductsPage = () => {
     },
     fetchPolicy: 'network-only',
   });
+
+  console.log('ProductsPage - GET_ALL_PRODUCTS loading:', loading);
+  console.log('ProductsPage - GET_ALL_PRODUCTS error:', error);
+  console.log('ProductsPage - GET_ALL_PRODUCTS data:', data);
 
   const formatPrice = (price, currencyCode) => {
     let locale = undefined;
@@ -206,7 +213,7 @@ const ProductsPage = () => {
                   </RouterLink>
                   <CardContent sx={{ p: 2, pt: 0 }}>
                     <Typography variant="h5" sx={{ mt: 'auto', fontWeight: 'bold', color: 'primary.main' }}>
-                      {formatPrice(product.price, product.currency)}
+                      {formatPrice(product.price, product.country.currencyCode)}
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
                       <Button 
@@ -284,7 +291,7 @@ const ProductsPage = () => {
                       </RouterLink>
                       <CardContent sx={{ p: 2, pt: 0 }}>
                         <Typography variant="h5" sx={{ mt: 'auto', fontWeight: 'bold', color: 'primary.main' }}>
-                          {formatPrice(product.price, product.currency)}
+                          {formatPrice(product.price, product.country.currencyCode)}
                         </Typography>
                         <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
                           <Button 
