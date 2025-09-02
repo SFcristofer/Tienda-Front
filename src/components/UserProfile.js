@@ -178,7 +178,7 @@ const UserProfile = () => {
             <Box component="form" onSubmit={handleUpdateProfile} sx={{ mt: 2 }}>
               <TextField margin="normal" required fullWidth label={t('name')} name="name" defaultValue={user.name} />
               <TextField margin="normal" required fullWidth label={t('emailAddress')} name="email" type="email" defaultValue={user.email} disabled />
-              <TextField margin="normal" fullWidth label={t('phoneNumber')} name="phoneNumber" value={addressForm.phoneNumber} onChange={handleNumericInputChange} />
+              <TextField margin="normal" fullWidth label={t('phoneNumber')} name="phoneNumber" defaultValue={user.phoneNumber || ''} onChange={handleNumericInputChange} />
               <Button type="submit" variant="contained" sx={{ mt: 2 }}>{t('updateProfile')}</Button>
             </Box>
             <Typography variant="h5" gutterBottom sx={{ mt: 4 }}>{t('accountManagement')}</Typography>
