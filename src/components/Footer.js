@@ -34,7 +34,7 @@ const Footer = () => {
       sx={{
         bgcolor: '#212529', // Un negro grisáceo oscuro
         color: 'white',
-        py: 6,
+        py: 3,
         mt: 8,
       }}
     >
