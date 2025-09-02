@@ -16,7 +16,7 @@ import { useRegion } from '../context/RegionContext';
 const SellerDashboard = () => {
   const { t } = useTranslation();
   const { country } = useRegion(); // Get country from context
-  const { register, handleSubmit, formState: { errors }, reset, control } = useForm({
+    const { register, handleSubmit, formState: { errors }, reset, control, watch, setValue } = useForm({
     defaultValues: {
       productName: '',
       productDescription: '',
@@ -143,16 +143,35 @@ const SellerDashboard = () => {
   });
   const [updateStore] = useMutation(UPDATE_STORE, { onCompleted: () => { refetchStore(); setOpenEditStoreDialog(false); setSnackbar({ open: true, message: t('storeUpdatedSuccess'), severity: 'success' }); }, onError: (err) => setSnackbar({ open: true, message: `${t('errorUpdatingStore')}: ${err.message}`, severity: 'error' }) });
   const [createProduct] = useMutation(CREATE_PRODUCT, {
-    onCompleted: () => {
-      refetchStore();
-      reset();
-      setProductImageUrl('');
-      setProductImageFileName('');
-      setSnackbar({ open: true, message: t('productCreatedSuccess'), severity: 'success' });
-      handleCloseAddProductModal(); // Close modal on success
-    },
-    onError: (err) => setSnackbar({ open: true, message: `${t('errorCreatingProduct')}: ${err.message}`, severity: 'error' })
-  });
+  update(cache, { data: { createProduct: newProduct } }) {
+    const existingStoreData = cache.readQuery({ query: GET_MY_STORE });
+    if (existingStoreData && existingStoreData.me && existingStoreData.me.store) {
+      cache.writeQuery({
+        query: GET_MY_STORE,
+        data: {
+          me: {
+            ...existingStoreData.me,
+            store: {
+              ...existingStoreData.me.store,
+              products: [...existingStoreData.me.store.products, newProduct],
+            },
+          },
+        },
+      });
+    }
+  },
+  onCompleted: async () => { // Make onCompleted async to await refetchStore
+    await refetchStore(); // Re-enable refetch for robustness
+    console.log('Store data after refetch:', storeDataDb); // Log the entire store data
+    console.log('Products after refetch:', storeDataDb?.me?.store?.products); // Log products specifically
+    reset();
+    setProductImageUrl('');
+    setProductImageFileName('');
+    setSnackbar({ open: true, message: t('productCreatedSuccess'), severity: 'success' });
+    handleCloseAddProductModal(); // Close modal on success
+  },
+  onError: (err) => setSnackbar({ open: true, message: `${t('errorCreatingProduct')}: ${err.message}`, severity: 'error' })
+});
   const [updateProduct] = useMutation(UPDATE_PRODUCT, { onCompleted: () => { refetchStore(); setOpenEditProductDialog(false); setSnackbar({ open: true, message: t('productUpdatedSuccess'), severity: 'success' }); }, onError: (err) => setSnackbar({ open: true, message: `${t('errorUpdatingProduct')}: ${err.message}`, severity: 'error' }) });
   const [deleteProduct] = useMutation(DELETE_PRODUCT, { onCompleted: () => { refetchStore(); setSnackbar({ open: true, message: t('productDeletedSuccess'), severity: 'success' }); }, onError: (err) => setSnackbar({ open: true, message: `${t('errorDeletingProduct')}: ${err.message}`, severity: 'error' }) });
   const [updateOrderStatus] = useMutation(UPDATE_ORDER_STATUS, { onCompleted: () => { refetchOrders(); setSnackbar({ open: true, message: t('orderStatusUpdatedSuccess'), severity: 'success' }); }, onError: (err) => setSnackbar({ open: true, message: `${t('errorUpdatingOrderStatus')}: ${err.message}`, severity: 'error' }) });
@@ -197,7 +216,7 @@ const SellerDashboard = () => {
   });
 
   const handleCreateProduct = handleSubmit(async (data) => {
-    await createProduct({ variables: { name: data.productName, description: data.productDescription, price: parseFloat(data.productPrice), currency: data.currency, storeId: store.id, imageUrl: productImageUrl, categoryId: data.categoryId, stock: parseInt(data.productStock) } });
+    await createProduct({ variables: { name: data.productName, description: data.productDescription, price: parseFloat(data.productPrice), storeId: store.id, imageUrl: productImageUrl, categoryId: data.categoryId, stock: parseInt(data.productStock), countryId: data.countryId } });
   });
 
   const handleUpdateProduct = handleSubmit(async (data) => {
@@ -225,7 +244,7 @@ const SellerDashboard = () => {
       productPrice: product.price,
       productStock: product.stock,
       categoryId: product.category.id,
-      countryId: product.country.id, // Pre-fill countryId
+      countryId: product.country?.id || '', // Pre-fill countryId, safely handle undefined country
     });
     setOpenEditProductDialog(true);
   };
@@ -429,7 +448,7 @@ const SellerDashboard = () => {
           </Button>
           <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
             <Typography variant="h5">{t('yourProducts')}</Typography>
-            {store.products?.length === 0 ? <Typography>{t('noProductsAdded')}</Typography> : <Grid container spacing={2}>{store.products.map((p) => <Grid item xs={12} sm={6} md={4} key={p.id}><Card sx={{ height: '100%' }}><CardMedia component="img" height="140" image={p.imageUrl || '/images/product-placeholder.svg'} alt={p.name} /><CardContent><Typography gutterBottom variant="h6">{p.name}</Typography><Typography variant="h6">${p.price}</Typography><Typography variant="body2">{t('stock')}: {p.stock}</Typography></CardContent><CardActions><Button size="small" onClick={() => openEditDialog(p)}>{t('edit')}</Button><Button size="small" color="error" onClick={() => { setProductToDeleteId(p.id); setOpenDeleteProductConfirmDialog(true); }}>{t('delete')}</Button></CardActions></Card></Grid>)}</Grid>}
+            {store.products && store.products.length === 0 ? <Typography>{t('noProductsAdded')}</Typography> : <Grid container spacing={2}>{(store.products || []).map((p) => <Grid item xs={12} sm={6} md={4} key={p.id}><Card sx={{ height: '100%' }}><CardMedia component="img" height="140" image={p.imageUrl || '/images/product-placeholder.svg'} alt={p.name} /><CardContent><Typography gutterBottom variant="h6">{p.name}</Typography><Typography variant="h6">${p.price}</Typography><Typography variant="body2">{t('stock')}: {p.stock}</Typography></CardContent><CardActions><Button size="small" onClick={() => openEditDialog(p)}>{t('edit')}</Button><Button size="small" color="error" onClick={() => { setProductToDeleteId(p.id); setOpenDeleteProductConfirmDialog(true); }}>{t('delete')}</Button></CardActions></Card></Grid>)}</Grid>}
               </Paper>
             </Box>
           )}
@@ -447,6 +466,8 @@ const SellerDashboard = () => {
                 handleProductImageChange={handleProductImageChange}
                 t={t}
                 onSubmit={handleSubmit(handleCreateProduct)}
+                watch={watch}
+                setValue={setValue}
               />
             </DialogContent>
             <DialogActions>
@@ -478,6 +499,8 @@ const SellerDashboard = () => {
                   handleProductImageChange={handleProductImageChange}
                   t={t}
                   onSubmit={handleSubmit(handleUpdateProduct)}
+                  watch={watch}
+                  setValue={setValue}
                 />
               </DialogContent>
               <DialogActions>
