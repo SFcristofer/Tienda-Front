@@ -8,7 +8,6 @@ import {
   Box,
   CircularProgress,
   Alert,
-  Grid,
   Card,
   CardContent,
   CardMedia,
@@ -74,8 +73,12 @@ const Home = () => {
     ],
   };
 
-  const featuredProducts = products.slice(0, 5);
-  const featuredStores = stores.slice(0, 5);
+  const featuredProducts = products.filter(p => p.esDestacado);
+  const featuredStores = stores.filter(s => s.esDestacado);
+
+  const otherProducts = products.filter(p => !p.esDestacado);
+  const featuredStoreIds = new Set(featuredStores.map(s => s.id));
+  const otherStores = stores.filter(s => !featuredStoreIds.has(s.id));
 
   return (
     <Box>
@@ -116,8 +119,13 @@ const Home = () => {
                 <Box key={product.id} sx={{ p: 1 }}>
                   <Card sx={{ textDecoration: 'none', height: '100%', display: 'flex', flexDirection: 'column' }}>
                     <RouterLink to={`/products/${product.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                                            <CardMedia component="img" height="160" image={product.imageUrl || '/images/product-placeholder.svg'} alt={product.name} sx={{ objectFit: 'contain', width: '100%' }} />
+                      <CardMedia component="img" height="160" image={product.imageUrl || '/images/product-placeholder.svg'} alt={product.name} sx={{ objectFit: 'contain', width: '100%' }} />
                       <CardContent>
+                        <Box sx={{ mb: 1, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                          {product.insignias && product.insignias.map((insignia, index) => (
+                            <Chip key={index} label={insignia} color="info" size="small" />
+                          ))}
+                        </Box>
                         <Typography gutterBottom variant="h6" component="div">{product.name}</Typography>
                       </CardContent>
                     </RouterLink>
@@ -135,11 +143,11 @@ const Home = () => {
           </Box>
         )}
 
-        {stores.length > 0 && (
+        {otherStores.length > 0 && (
           <Box>
             <Typography variant="h4" gutterBottom sx={{ mb: 3 }}>{t('productsByStore')}</Typography>
-            {stores.map((store) => {
-              const storeProducts = products.filter((p) => p.store?.id === store.id).slice(0, 4);
+            {otherStores.map((store) => {
+              const storeProducts = otherProducts.filter((p) => p.store?.id === store.id).slice(0, 4);
               if (storeProducts.length === 0) return null;
               return (
                 <Box key={store.id} sx={{ mb: 6 }}>

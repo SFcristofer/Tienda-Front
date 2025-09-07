@@ -547,3 +547,35 @@ export const ADMIN_DELETE_COUNTRY = gql`
     adminDeleteCountry(id: $id)
   }
 `;
+
+export const ADMIN_SET_CATEGORY_SPONSOR = gql`
+  mutation AdminSetCategorySponsor($categoryId: ID!, $storeId: ID) {
+    adminSetCategorySponsor(categoryId: $categoryId, storeId: $storeId) {
+      id
+      sponsoredStore {
+        id
+        name
+      }
+    }
+  }
+`;
+
+export const ADMIN_UPDATE_STORE_MONETIZATION = gql`
+  mutation AdminUpdateStoreMonetization($storeId: ID!, $plan: String, $esDestacado: Boolean) {
+    adminUpdateStoreMonetization(storeId: $storeId, plan: $plan, esDestacado: $esDestacado) {
+      id
+      plan
+      esDestacado
+    }
+  }
+`;
+
+export const ADMIN_UPDATE_PRODUCT_MONETIZATION = gql`
+  mutation AdminUpdateProductMonetization($productId: ID!, $esDestacado: Boolean, $insignias: [String]) {
+    adminUpdateProductMonetization(productId: $productId, esDestacado: $esDestacado, insignias: $insignias) {
+      id
+      esDestacado
+      insignias
+    }
+  }
+`;

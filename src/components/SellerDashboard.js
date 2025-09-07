@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@apollo/client';
 import { useTranslation } from 'react-i18next';
-import { TextField, Button, Typography, Box, Paper, CircularProgress, Alert, List, ListItem, ListItemText, Snackbar, Select, MenuItem, FormControl, InputLabel, Card, CardContent, Grid, CardMedia, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Tabs, Tab, CardActions, AlertTitle } from '@mui/material'; // Add AlertTitle
-import WarningIcon from '@mui/icons-material/Warning'; // Add WarningIcon
+import { TextField, Button, Typography, Box, Paper, CircularProgress, Alert, Select, MenuItem, FormControl, InputLabel, Card, CardContent, Grid, CardMedia, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Tabs, Tab, CardActions, Snackbar } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
-import AddIcon from '@mui/icons-material/Add';
-import { Link } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { GET_MY_STORE, GET_SELLER_ORDERS, GET_ALL_CATEGORIES, GET_ALL_STORE_CATEGORIES, GET_ALL_STORES, GET_ALL_ACTIVE_COUNTRIES } from '../graphql/queries';
 import { CREATE_STORE, CREATE_PRODUCT, UPDATE_ORDER_STATUS, UPDATE_STORE, UPDATE_PRODUCT, DELETE_PRODUCT, UPLOAD_IMAGE } from '../graphql/mutations';
@@ -29,8 +26,6 @@ const SellerDashboard = () => {
   const [tabValue, setTabValue] = useState(0);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [selectedStoreCategories, setSelectedStoreCategories] = useState([]);
-  const [openCreateCategoryModal, setOpenCreateCategoryModal] = useState(false);
-  const [showNewStoreCategoryForm, setShowNewStoreCategoryForm] = useState(false);
 
   const [openAddProductModal, setOpenAddProductModal] = useState(false); // New state for add product modal
 
@@ -70,11 +65,11 @@ const SellerDashboard = () => {
     contactEmail: '',
   });
 
-  const { data: countriesData, loading: loadingCountries, error: errorCountries } = useQuery(GET_ALL_ACTIVE_COUNTRIES);
+  const { data: countriesData } = useQuery(GET_ALL_ACTIVE_COUNTRIES);
   const { data: storeDataDb, loading: loadingStore, error: errorStore, refetch: refetchStore } = useQuery(GET_MY_STORE, { fetchPolicy: 'network-only' });
   const { data: ordersData, loading: loadingOrders, error: errorOrders, refetch: refetchOrders } = useQuery(GET_SELLER_ORDERS, { skip: !storeDataDb?.me?.store, fetchPolicy: 'network-only' });
   const { data: categoriesData, loading: loadingCategories, error: errorCategories } = useQuery(GET_ALL_CATEGORIES);
-  const { data: storeCategoriesData, loading: loadingStoreCategories, error: errorStoreCategories } = useQuery(GET_ALL_STORE_CATEGORIES);
+  const { data: storeCategoriesData } = useQuery(GET_ALL_STORE_CATEGORIES);
 
   useEffect(() => {
     if (country) {
@@ -116,7 +111,6 @@ const SellerDashboard = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [openDeleteProductConfirmDialog, setOpenDeleteProductConfirmDialog] = useState(false);
   const [productToDeleteId, setProductToDeleteId] = useState(null);
-
   const [openStatusConfirmDialog, setOpenStatusConfirmDialog] = useState(false);
   const [statusConfirmDetails, setStatusConfirmDetails] = useState({ orderId: null, newStatus: null });
 
@@ -124,6 +118,23 @@ const SellerDashboard = () => {
   const categories = categoriesData?.getAllCategories || [];
   const storeCategories = storeCategoriesData?.getAllStoreCategories || [];
   const orders = ordersData?.sellerOrders || [];
+
+  const [trialMessage, setTrialMessage] = useState('');
+
+  useEffect(() => {
+    if (store && store.plan === 'profesional' && store.trialExpiresAt) {
+      const expirationDate = new Date(store.trialExpiresAt);
+      const now = new Date();
+      const diffTime = expirationDate.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays > 0) {
+        setTrialMessage(t('trialActiveMessage', { days: diffDays }));
+      } else {
+        setTrialMessage(t('trialExpiredMessage'));
+      }
+    }
+  }, [store, t]);
 
   const [createStore] = useMutation(CREATE_STORE, {
     update(cache, { data: { createStore: newStore } }) {
@@ -170,7 +181,13 @@ const SellerDashboard = () => {
     setSnackbar({ open: true, message: t('productCreatedSuccess'), severity: 'success' });
     handleCloseAddProductModal(); // Close modal on success
   },
-  onError: (err) => setSnackbar({ open: true, message: `${t('errorCreatingProduct')}: ${err.message}`, severity: 'error' })
+  onError: (err) => {
+    if (err.graphQLErrors[0]?.extensions?.code === 'PRODUCT_LIMIT_REACHED') {
+      setSnackbar({ open: true, message: t('productLimitReached'), severity: 'warning' });
+    } else {
+      setSnackbar({ open: true, message: `${t('errorCreatingProduct')}: ${err.message}`, severity: 'error' });
+    }
+  }
 });
   const [updateProduct] = useMutation(UPDATE_PRODUCT, { onCompleted: () => { refetchStore(); setOpenEditProductDialog(false); setSnackbar({ open: true, message: t('productUpdatedSuccess'), severity: 'success' }); }, onError: (err) => setSnackbar({ open: true, message: `${t('errorUpdatingProduct')}: ${err.message}`, severity: 'error' }) });
   const [deleteProduct] = useMutation(DELETE_PRODUCT, { onCompleted: () => { refetchStore(); setSnackbar({ open: true, message: t('productDeletedSuccess'), severity: 'success' }); }, onError: (err) => setSnackbar({ open: true, message: `${t('errorDeletingProduct')}: ${err.message}`, severity: 'error' }) });
@@ -186,24 +203,6 @@ const SellerDashboard = () => {
   const handleStoreInputChange = (e) => {
     const { name, value } = e.target;
     setStoreData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleUpdateStore = async () => {
-    await updateStore({
-      variables: {
-        id: store.id,
-        name: editStoreName,
-        description: editStoreDescription,
-        street: editStoreStreet,
-        city: editStoreCity,
-        state: editStoreState,
-        zipCode: editStoreZipCode,
-        countryId: editStoreCountryId,
-        phoneNumber: editStorePhoneNumber,
-        contactEmail: editStoreContactEmail,
-        imageUrl: editStoreImageUrl,
-      }
-    });
   };
 
   const handleCreateStore = handleSubmit(async (data) => {
@@ -405,6 +404,37 @@ const SellerDashboard = () => {
           <Typography variant="h5" gutterBottom>{t('storeDetails')}</Typography>
           <Typography variant="h6">{t('name')}: {store.name}</Typography>
           <Typography variant="body1">{t('description')}: {store.description}</Typography>
+
+          {/* Plan Details Box */}
+          <Box sx={{ my: 2, p: 2, border: '1px solid', borderColor: 'primary.main', borderRadius: 2, backgroundColor: '#f7f9fc' }}>
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>{t('planDetails')}</Typography>
+            
+            {trialMessage && <Alert severity="info" sx={{ mb: 2 }}>{trialMessage}</Alert>}
+
+            <Typography variant="body1">
+              {t('currentPlan')}: 
+              <Chip 
+                label={store.plan.charAt(0).toUpperCase() + store.plan.slice(1)} 
+                color={store.plan === 'profesional' ? 'success' : 'default'} 
+                sx={{ ml: 1, fontWeight: 'bold' }}
+              />
+            </Typography>
+            {store.plan === 'basico' && (
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="body1">
+                  {t('productsPublished')}: {store.products?.length || 0} / 5
+                </Typography>
+                <Button variant="contained" color="secondary" sx={{ mt: 1 }}>
+                  {t('upgradeToProfessional')}
+                </Button>
+              </Box>
+            )}
+             {store.plan === 'profesional' && !store.trialExpiresAt && (
+              <Typography variant="body1" sx={{ mt: 1, color: 'success.main' }}>
+                {t('unlimitedProducts')}
+              </Typography>
+            )}
+          </Box>
           <Typography variant="body2" color="text.secondary">{t('status')}: {store.status}</Typography>
           {store.averageRating !== null && store.averageRating !== undefined && (
             <Typography variant="body2" color="text.secondary">{t('averageRating')}: {store.averageRating.toFixed(1)}</Typography>

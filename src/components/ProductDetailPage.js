@@ -22,6 +22,7 @@ import {
   Avatar,
   Card,
   CardContent,
+  Chip,
 } from '@mui/material';
 import Slider from 'react-slick';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
@@ -81,6 +82,11 @@ const ProductDetailPage = () => {
             <CardMedia component="img" image={product.imageUrl || '/images/product-placeholder.svg'} alt={product.name} sx={{ height: '100%', objectFit: 'cover', width: '100%' }} />
           </Box>
           <Typography variant="h3" gutterBottom sx={{ mt: 2 }}>{product.name}</Typography>
+          <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            {product.insignias && product.insignias.map((insignia, index) => (
+              <Chip key={index} label={insignia} color="info" size="small" />
+            ))}
+          </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
             <Rating value={product.averageRating} precision={0.5} readOnly />
             <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>({product.reviews.length} {t('reviews')})</Typography>

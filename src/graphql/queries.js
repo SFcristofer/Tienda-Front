@@ -27,6 +27,7 @@ export const GET_MY_STORE = gql`
         description
         imageUrl
         status
+        plan
         street
         city
         state
@@ -88,6 +89,8 @@ export const GET_ALL_PRODUCTS = gql`
       description
       price
       imageUrl
+      insignias
+      esDestacado
       store {
         id
         name
@@ -120,6 +123,7 @@ export const GET_ALL_STORES = gql`
       name
       description
       imageUrl
+      esDestacado # <-- ADD THIS
       owner {
         name
       }
@@ -136,6 +140,25 @@ export const GET_ALL_CATEGORIES = gql`
     getAllCategories {
       id
       name
+      sponsoredStore {
+        id
+        name
+      }
+    }
+  }
+`;
+
+export const GET_CATEGORY_BY_ID = gql`
+  query GetCategoryById($id: ID!) {
+    getCategoryById(id: $id) {
+      id
+      name
+      sponsoredStore {
+        id
+        name
+        imageUrl
+        description
+      }
     }
   }
 `;
@@ -277,6 +300,7 @@ export const GET_PRODUCT_BY_ID = gql`
       imageUrl
       stock
       averageRating
+      insignias # <-- ADD THIS
       store {
         id
         name
@@ -667,6 +691,28 @@ export const GET_STORES_BY_LOCATION = gql`
       latitude
       longitude
       averageRating
+    }
+  }
+`;
+
+export const GET_ALL_STORES_WITH_PLANS = gql`
+  query GetAllStoresWithPlans {
+    adminGetAllStores {
+      id
+      name
+      plan
+      esDestacado
+    }
+  }
+`;
+
+export const GET_ALL_PRODUCTS_FOR_MONETIZATION = gql`
+  query GetAllProductsForMonetization {
+    adminGetAllProducts {
+      id
+      name
+      esDestacado
+      insignias
     }
   }
 `;

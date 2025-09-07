@@ -1,20 +1,33 @@
 
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@apollo/client';
+import { useQuery, useLazyQuery } from '@apollo/client';
 import { useTranslation } from 'react-i18next';
-import { GET_ALL_PRODUCTS, GET_ALL_CATEGORIES } from '../graphql/queries';
+import { GET_ALL_PRODUCTS, GET_ALL_CATEGORIES, GET_CATEGORY_BY_ID } from '../graphql/queries';
 import { useCart } from '../context/CartContext';
 import { useRegion } from '../context/RegionContext'; // Importar hook
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { Container, Typography, Grid, Card, CardContent, CardMedia, Button, Box, CircularProgress, Alert, Divider, Drawer, List, ListItem, ListItemText, Checkbox, FormGroup, FormControlLabel, TextField, Slider, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import SponsoredStoreBanner from './SponsoredStoreBanner'; // Importar el nuevo componente
 
 const ProductsPage = () => {
   const { t } = useTranslation();
   const { addToCart } = useCart();
   const navigate = useNavigate();
   const { region: country, loading: regionLoading } = useRegion(); // Usar hook y renombrar region a country
+
+  const [sponsoredStore, setSponsoredStore] = useState(null);
+
+  const [getCategory, { data: categoryData }] = useLazyQuery(GET_CATEGORY_BY_ID);
+
+  useEffect(() => {
+    if (categoryData && categoryData.getCategoryById) {
+      setSponsoredStore(categoryData.getCategoryById.sponsoredStore);
+    } else {
+      setSponsoredStore(null);
+    }
+  }, [categoryData]);
 
   console.log('ProductsPage - country:', country);
   console.log('ProductsPage - regionLoading:', regionLoading);
@@ -64,6 +77,14 @@ const ProductsPage = () => {
     );
   };
 
+  useEffect(() => {
+    if (selectedCategoryIds.length === 1) {
+      getCategory({ variables: { id: selectedCategoryIds[0] } });
+    } else {
+      setSponsoredStore(null);
+    }
+  }, [selectedCategoryIds, getCategory]);
+
   const handleClearFilters = () => {
     setSelectedCategoryIds([]);
     setMinPrice('');
@@ -78,6 +99,13 @@ const ProductsPage = () => {
   };
 
   const products = data?.getAllProducts || [];
+
+  // Sort products to show featured ones first
+  products.sort((a, b) => {
+    if (a.esDestacado && !b.esDestacado) return -1;
+    if (!a.esDestacado && b.esDestacado) return 1;
+    return 0;
+  });
 
   // Determine if any filters are active
   const areFiltersActive =
@@ -171,6 +199,8 @@ const ProductsPage = () => {
       <Typography variant="h2" gutterBottom align="center" sx={{ mb: 4, fontWeight: 'bold' }}>
         {t('allProducts')}
       </Typography>
+
+      {sponsoredStore && <SponsoredStoreBanner store={sponsoredStore} t={t} />}
 
       {areFiltersActive ? (
         // Display filtered products as a flat list

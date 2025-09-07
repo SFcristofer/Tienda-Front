@@ -143,6 +143,7 @@ const Navbar = () => {
                     <MenuItem onClick={() => { navigate('/profile'); handleClose(); }}>{t('profile')}</MenuItem>
                                         {user.role !== 'customer' && <MenuItem onClick={() => { navigate('/dashboard'); handleClose(); }}>{t('dashboard')}</MenuItem>}
                     {user.role === 'admin' && <MenuItem onClick={() => { navigate('/admin'); handleClose(); }}>{t('adminDashboard')}</MenuItem>}
+                    {user.role === 'admin' && <MenuItem onClick={() => { navigate('/admin/monetization'); handleClose(); }}>{t('monetizationPanel')}</MenuItem>}
                     <MenuItem onClick={handleLogout}>{t('logout')}</MenuItem>
                   </Menu>
                 </>
@@ -239,6 +240,11 @@ const Navbar = () => {
                 {user.role === 'admin' && (
                   <ListItemButton onClick={() => navigate('/admin')}>
                     <ListItemText primary={t('adminDashboard')} />
+                  </ListItemButton>
+                )}
+                {user.role === 'admin' && (
+                  <ListItemButton onClick={() => navigate('/admin/monetization')}>
+                    <ListItemText primary={t('monetizationPanel')} />
                   </ListItemButton>
                 )}
                 <ListItemButton onClick={handleLogout}>
