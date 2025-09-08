@@ -58,6 +58,8 @@ export const GET_MY_STORE = gql`
           id
           name
         }
+        trialExpiresAt
+        trialRemainingDays
       }
     }
   }
@@ -392,6 +394,9 @@ export const adminGetAllStores = gql`
         currencyCode
         currencySymbol
       }
+      plan
+      trialExpiresAt
+      trialRemainingDays
     }
   }
 `;
@@ -702,6 +707,7 @@ export const GET_ALL_STORES_WITH_PLANS = gql`
       name
       plan
       esDestacado
+      trialExpiresAt
     }
   }
 `;

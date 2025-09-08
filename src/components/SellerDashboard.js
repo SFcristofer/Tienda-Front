@@ -121,21 +121,6 @@ const SellerDashboard = () => {
 
   const [trialMessage, setTrialMessage] = useState('');
 
-  useEffect(() => {
-    if (store && store.plan === 'profesional' && store.trialExpiresAt) {
-      const expirationDate = new Date(store.trialExpiresAt);
-      const now = new Date();
-      const diffTime = expirationDate.getTime() - now.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      if (diffDays > 0) {
-        setTrialMessage(t('trialActiveMessage', { days: diffDays }));
-      } else {
-        setTrialMessage(t('trialExpiredMessage'));
-      }
-    }
-  }, [store, t]);
-
   const [createStore] = useMutation(CREATE_STORE, {
     update(cache, { data: { createStore: newStore } }) {
       const existingStores = cache.readQuery({ query: GET_ALL_STORES, variables: { sortBy: 'updatedAt', sortOrder: 'DESC' } });
@@ -409,7 +394,13 @@ const SellerDashboard = () => {
           <Box sx={{ my: 2, p: 2, border: '1px solid', borderColor: 'primary.main', borderRadius: 2, backgroundColor: '#f7f9fc' }}>
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>{t('planDetails')}</Typography>
             
-            {trialMessage && <Alert severity="info" sx={{ mb: 2 }}>{trialMessage}</Alert>}
+            {store.plan === 'profesional' && store.trialRemainingDays !== null && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                {store.trialRemainingDays > 0
+                  ? t('trialActiveMessage', { days: store.trialRemainingDays })
+                  : t('trialExpiredMessage')}
+              </Alert>
+            )}
 
             <Typography variant="body1">
               {t('currentPlan')}: 

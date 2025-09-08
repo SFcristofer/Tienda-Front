@@ -100,6 +100,11 @@ const StoreMonetizationDetail = ({ store, onBack }) => {
           {t('storeLevelMonetization')}: {fullStoreData.name}
         </Typography>
         <Divider sx={{ my: 2 }} />
+        {fullStoreData.plan === 'profesional' && fullStoreData.trialExpiresAt && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            {t('trialExpiresOn', { date: new Date(fullStoreData.trialExpiresAt).toLocaleDateString() })}
+          </Alert>
+        )}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 4, mb: 2 }}>
           <FormControlLabel
             control={

@@ -77,20 +77,35 @@ const StoreMonetizationManager = () => {
       />
 
       <List>
-        {filteredStores.map(store => (
-          <ListItem key={store.id} divider>
-            <ListItemText 
-              primary={store.name} 
-              secondary={`Plan: ${store.plan || 'N/A'} - Featured: ${store.esDestacado ? 'Yes' : 'No'}`}
-            />
-            <Button
-              variant="contained"
-              onClick={() => handleSelectStore(store)}
-            >
-              {t('manage')}
-            </Button>
-          </ListItem>
-        ))}
+        {filteredStores.map(store => {
+          let secondaryText = `Plan: ${store.plan || 'N/A'} - Featured: ${store.esDestacado ? 'Yes' : 'No'}`;
+          if (store.plan === 'profesional' && store.trialExpiresAt) {
+            const expirationDate = new Date(store.trialExpiresAt);
+            const now = new Date();
+            const diffTime = expirationDate.getTime() - now.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays > 0) {
+              secondaryText = `Plan: Profesional (Trial - ${diffDays} days left)`;
+            } else {
+              secondaryText = `Plan: Profesional (Trial Expired)`;
+            }
+          }
+
+          return (
+            <ListItem key={store.id} divider>
+              <ListItemText 
+                primary={store.name} 
+                secondary={secondaryText}
+              />
+              <Button
+                variant="contained"
+                onClick={() => handleSelectStore(store)}
+              >
+                {t('manage')}
+              </Button>
+            </ListItem>
+          );
+        })}
       </List>
     </Box>
   );
