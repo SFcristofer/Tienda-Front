@@ -1,0 +1,122 @@
+/* ProductList.css */
+
+.product-list-section {
+  padding: 20px;
+  /* max-width: 200px; <-- ELIMINADO: ESTO CAUSABA EL PROBLEMA */
+  margin: 0 auto;
+}
+
+.product-list-section h2 {
+  text-align: center;
+  margin-bottom: 30px;
+  color: black !important; /* Ensure this is black */
+  font-size: 2.5em;
+}
+
+.product-grid {
+  display: grid; /* Usar Grid para un layout responsivo */
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); /* Columnas responsivas */
+  gap: 25px;
+  justify-content: center;
+}
+
+.product-card {
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 20px;
+  /* display: flex; <-- ELIMINADO: EL GRID SE ENCARGA DEL LAYOUT */
+  flex-direction: column; /* Asegura que el contenido de la tarjeta se apile verticalmente */
+  align-items: center; /* Centra los elementos dentro de la tarjeta */
+  text-align: center;
+}
+
+.product-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.product-image {
+  width: 100%;
+  max-width: 200px;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+.product-name {
+  font-size: 1.5em;
+  color: #333;
+  margin-bottom: 10px;
+  height: 3em; /* Fixed height for names */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* Limit to 2 lines */
+  -webkit-box-orient: vertical;
+}
+
+.product-price {
+  font-size: 1.3em;
+  color: #007bff;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.product-store,
+.product-category {
+  font-size: 0.9em;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.add-to-cart-button {
+  background-color: #28a745; /* Green for add to cart */
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1em;
+  margin-top: 15px;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.add-to-cart-button:hover {
+  background-color: #218838;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .product-grid {
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+  }
+
+  .product-list-section h2 {
+    font-size: 2em;
+  }
+}
+
+@media (max-width: 480px) {
+  .product-grid {
+    grid-template-columns: 1fr; /* Single column on very small screens */
+    gap: 15px;
+  }
+
+  .product-card {
+    padding: 15px;
+  }
+
+  .product-list-section {
+    padding: 15px;
+  }
+
+  .product-list-section h2 {
+    font-size: 1.8em;
+  }
+}
+ze: 1.8em;
+  }
+}
