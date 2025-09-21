@@ -587,7 +587,7 @@ const MyStoresPanel = ({ stores, selectedStoreId, setSelectedStoreId }) => {
       <>
         <Typography variant="h6">Mis Tiendas</Typography>
         <Typography>No tienes ninguna tienda creada todavía.</Typography>
-        <Button variant="contained" sx={{ mt: 2 }}>Crear Tienda</Button>
+        <Button component={RouterLink} to="/create-store" variant="contained" sx={{ mt: 2 }}>Crear Tienda</Button>
       </>
     );
   }
@@ -660,12 +660,15 @@ const MyStoresPanel = ({ stores, selectedStoreId, setSelectedStoreId }) => {
 
   return (
     <>
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', width: '100%' }}>
-        <Tabs value={selectedStoreId} onChange={handleStoreChange} aria-label="pestañas de tiendas" variant="scrollable" scrollButtons="auto">
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 1, borderColor: 'divider', width: '100%' }}>
+        <Tabs value={selectedStoreId} onChange={handleStoreChange} aria-label="pestañas de tiendas" variant="scrollable" scrollButtons="auto" sx={{ flexGrow: 1 }}>
           {stores.map(store => (
             <Tab key={store.id} label={store.name} value={store.id} />
           ))}
         </Tabs>
+        <Button component={RouterLink} to="/create-store" variant="contained" sx={{ ml: 2, whiteSpace: 'nowrap' }}>
+          Crear Nueva Tienda
+        </Button>
       </Box>
 
       {selectedStore && (

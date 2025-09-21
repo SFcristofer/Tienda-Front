@@ -1,0 +1,55 @@
+Este archivo detalla los pasos de backend para implementar el servicio de **Sitios Web Personalizados**.
+Esto es distinto del marketplace de tiendas y requiere su propia lógica y modelo de datos.
+
+### Fase 1: Nuevo Modelo de Datos `Site`
+
+1.  **Crear Modelo y Tabla `Site`:**
+    *   Usando Sequelize, crear un nuevo modelo `Site`.
+    *   Campos requeridos:
+        - `id`: Clave primaria.
+        - `name`: (String) El nombre que el usuario le da a su sitio.
+        - `ownerId`: (ForeignKey) ID del usuario propietario, para saber a quién pertenece cada sitio.
+        - `slug`: (String, **unique**) La URL única para el sitio (ej: `mi-sitio-genial`). La restricción `unique` a nivel de base de datos es fundamental.
+        - `pageData`: (TEXT o JSON/JSONB) La columna que almacenará la estructura JSON completa del sitio web, generada por el editor drag-and-drop.
+
+2.  **Lógica de Creación (`POST /api/sites`):
+    *   Crear un endpoint para que un usuario pueda crear un nuevo sitio.
+    *   Al recibir el nombre del sitio, el backend debe generar un `slug` único (usando `slugify` y añadiendo `-2`, `-3` si hay colisiones) antes de guardar la nueva entrada en la tabla `Sites`.
+
+### Fase 2: Edición y Publicación del Sitio Web
+
+1.  **Endpoint de Guardado del Editor (`PUT /api/sites/:siteId/pagedata`):
+    *   Este endpoint recibirá el gran objeto JSON del editor drag-and-drop.
+    *   Su única función es guardar este JSON en la columna `pageData` del sitio correspondiente.
+
+2.  **Endpoint de Verificación de Slug (`GET /api/slugs/check?name=...`):
+    *   Crear un endpoint que el frontend pueda consultar en tiempo real para verificar si un `slug` está disponible antes de que el usuario lo guarde.
+
+3.  **Endpoint de Actualización de Ajustes (`PUT /api/sites/:siteId`):
+    *   Para actualizar el nombre del sitio y, más importante, el `slug`.
+    *   Este controlador debe verificar que el nuevo `slug` no esté en uso por otro sitio antes de guardarlo.
+    *   Si el `slug` cambia, debe invocar el sistema de redirecciones (Fase 4).
+
+### Fase 3: Servir las Páginas Públicas
+
+1.  **Endpoint Público Principal (`GET /:slug` en el servidor principal, o manejado por el frontend):
+    *   Este es el endpoint que el público general visitará.
+    *   Como se discutió, la forma más simple es que el frontend de React tenga una ruta `/:slug` que cargue un componente `PublicSitePage`.
+    *   Este componente llama a un endpoint de API, por ejemplo `GET /api/sites/public/:slug`.
+
+2.  **Endpoint de Datos Públicos (`GET /api/sites/public/:slug`):
+    *   Este endpoint busca un sitio por su `slug` en la tabla `Sites`.
+    *   Si lo encuentra, devuelve el contenido de la columna `pageData` (el JSON del diseño).
+    *   Si no lo encuentra, busca en la tabla de redirecciones (Fase 4).
+
+### Fase 4: Sistema de Redirecciones (Avanzado)
+
+1.  **Nuevo Modelo y Tabla `Redirect`:**
+    *   Campos: `oldSlug` (string, unique) y `newSlug` (string).
+
+2.  **Lógica de Creación de Redirección:**
+    *   Cuando se actualiza un `slug` en `PUT /api/sites/:siteId`, se crea una entrada en la tabla `Redirects`.
+
+3.  **Lógica en el Endpoint Público:**
+    *   Si `GET /api/sites/public/:slug` no encuentra un sitio, debe buscar en `Redirects`.
+    *   Si encuentra una redirección, en lugar de devolver datos, debe responder con un código 301 y la nueva ubicación para que el navegador del visitante sea redirigido correctamente.

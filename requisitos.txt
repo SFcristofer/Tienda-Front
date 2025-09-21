@@ -1,0 +1,106 @@
+Perfecto 🚀
+Aquí tienes una **lista organizada de funciones** que debe tener un marketplace tipo Mercado Libre/Amazon (multiusuarios: vendedores y compradores).
+
+---
+
+## 🔑 1. Autenticación y usuarios
+
+* Registro de usuarios (email, teléfono, social login).
+* Login/Logout seguro (OAuth2, JWT).
+* Roles de usuario (comprador, vendedor, admin).
+* Recuperación de contraseña.
+* Verificación de identidad (KYC para vendedores).
+* Panel de perfil de usuario.
+
+---
+
+## 🛍️ 2. Catálogo y productos
+
+* Crear/editar/eliminar productos (solo vendedores).
+* Subir imágenes y videos de producto.
+* Categorías y subcategorías.
+* Variantes (talla, color, modelo).
+* Inventario/stock.
+* Estado del producto (activo, pausado, agotado).
+* SEO interno (título, descripción, atributos).
+
+---
+
+## 🔎 3. Búsqueda y exploración
+
+* Búsqueda por palabra clave.
+* Filtros (categoría, precio, ubicación, rating).
+* Ordenamiento (relevancia, más vendidos, precio, recientes).
+* Recomendaciones.
+* Productos destacados o patrocinados.
+
+---
+
+## 🛒 4. Carrito y checkout
+
+* Agregar al carrito (multi-vendedor).
+* Ver carrito y modificar cantidades.
+* Guardar carrito persistente por usuario.
+* Checkout en un solo flujo.
+* Cálculo de envío e impuestos.
+
+---
+
+## 📦 6. Órdenes y envíos
+
+* Crear orden después del pago.
+* Estado de la orden (pendiente, pagada, enviada, entregada, devuelta).
+* Tracking de envíos con número de guía.
+* Integración con paqueterías (DHL, FedEx, Estafeta, etc).
+* Cancelaciones y devoluciones.
+
+---
+
+## 💬 7. Comunicación y soporte
+
+* Mensajería comprador ↔ vendedor.
+* Centro de disputas (abrir reclamo, responder, resolución).
+* Notificaciones (email, push, dentro de la app).
+* Soporte admin (chat o tickets).
+
+---
+
+## ⭐ 8. Reseñas y reputación
+
+* Calificación del producto (1 a 5 estrellas).
+* Comentarios de compradores.
+* Rating promedio de vendedor.
+* Restricción: solo compradores confirmados pueden calificar.
+
+---
+
+## 📊 9. Panel del vendedor
+
+* Listado de productos publicados.
+* Ventas y estadísticas (diarias, mensuales).
+* Pedidos pendientes de envío.
+* Devoluciones abiertas.
+* Saldo y pagos próximos.
+
+---
+
+## 🛡️ 10. Panel del administrador
+
+* Gestión de usuarios y vendedores.
+* Moderación de productos (aprobar/rechazar).
+* Configuración de categorías.
+* Configuración de comisiones y tarifas.
+* Dashboard de métricas globales.
+* Resolución de disputas complejas.
+
+---
+
+## 📈 11. Extras y escalabilidad
+
+* Cupones y descuentos.
+* Productos favoritos / wishlist.
+* Programa de puntos/recompensas.
+* Publicidad interna (ads de vendedores).
+* Suscripciones (ej: premium seller).
+* Reportes de ventas, facturación (CFDI en México).
+

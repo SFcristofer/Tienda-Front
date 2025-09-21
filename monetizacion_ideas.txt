@@ -1,0 +1,28 @@
+# Ideas de Monetización para el Marketplace
+
+## Fase 1: Lanzamiento y Crecimiento (Gratis)
+*   **Objetivo:** Atraer vendedores y compradores, crear masa crítica.
+*   **Estrategia:**
+    *   Comisiones del 0% por tiempo limitado.
+    *   Todas las funciones para vendedores gratuitas.
+    *   Enfoque en la experiencia de usuario y onboarding.
+    *   Recolección de datos para análisis futuro.
+
+## Fase 2: Monetización (Funciones Futuras)
+
+### 1. Comisión por Transacción (Modelo Principal)
+*   **Descripción:** Cobrar un porcentaje (ej. 5%-15%) sobre cada venta realizada.
+*   **Implementación:** Integración con pasarelas de pago (Stripe Connect, Mercado Pago) para división automática de pagos. Añadir `platformFee` al modelo `Order`.
+
+### 2. Suscripciones para Vendedores (Planes y Niveles)
+*   **Descripción:** Ofrecer planes mensuales/anuales con diferentes capacidades y beneficios.
+*   **Ejemplos de Planes:** Gratuito, Básico, Premium (diferencias en límite de productos, analíticas, comisiones, etc.).
+*   **Implementación:** Añadir `subscriptionTier` al modelo `Store` o `User`. Proteger rutas API y funciones de frontend según el plan.
+
+### 3. Productos y Tiendas Promocionadas (Publicidad Interna)
+*   **Descripción:** Vendedores pagan para destacar sus productos o tiendas en la plataforma.
+*   **Implementación:** Añadir `isPromoted` o `promotedUntil` a los modelos `Product` y `Store`. Modificar componentes de visualización (Home, Productos, Tiendas) para mostrar destacados.
+
+### 4. Servicios de Valor Agregado para Vendedores
+*   **Descripción:** Ofrecer herramientas o servicios opcionales a la carta.
+*   **Ideas:** Analíticas avanzadas, herramientas de marketing, integración con logística de envío, plantillas de diseño de tienda.

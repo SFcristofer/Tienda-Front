@@ -1,0 +1,186 @@
+Claro, aquí tienes la guía definitiva y clarificada.
+
+Es importante que sepas que yo ya he modificado y preparado todo el **backend**. La parte del **frontend** no la puedo aplicar yo directamente porque implica crear nuevos archivos y componentes en tu proyecto de React. Sin embargo, te daré el código exacto y te diré exactamente dónde poner todo.
+
+---
+### **Paso 1: Configurar las Variables de Entorno (.env)**
+---
+
+Necesitas tener dos archivos `.env`, uno para el backend y otro para el frontend.
+
+**1. Archivo de Backend:**
+   - **Ubicación:** `C:\Users\crist\OneDrive\Desktop\Tienda online\backend\.env`
+   - **Contenido a añadir:** Pega tus claves secretas de Stripe aquí.
+     ```
+     STRIPE_SECRET_KEY="sk_test_..."
+     STRIPE_WEBHOOK_SECRET="whsec_..."
+     ```
+
+**2. Archivo de Frontend:**
+   - **Acción:** Crea un nuevo archivo en esta ubicación si no existe.
+   - **Ubicación:** `C:\Users\crist\OneDrive\Desktop\Tienda online\frontend\.env`
+   - **Contenido a añadir:** Pega tu clave **publicable** de Stripe aquí.
+     ```
+     REACT_APP_STRIPE_PUBLISHABLE_KEY="pk_test_..."
+     ```
+   - **Importante:** El prefijo `REACT_APP_` es obligatorio en React para que la variable sea accesible.
+
+**Recuerda reiniciar ambos servidores (backend y frontend) después de crear o modificar estos archivos para que lean la nueva configuración.**
+
+---
+### **Paso 2: Código del Frontend**
+---
+
+Aquí está el código que necesitas añadir en tu proyecto de frontend.
+
+**1. Archivo Principal (Probablemente `frontend/src/index.js`)**
+   - **Acción:** Envuelve tu componente `App` con el componente `Elements` de Stripe para habilitar Stripe en toda tu aplicación.
+
+   ```jsx
+   // frontend/src/index.js
+
+   import React from 'react';
+   import ReactDOM from 'react-dom/client';
+   import './index.css';
+   import App from './App';
+   import { loadStripe } from '@stripe/stripe-js';
+   import { Elements } from '@stripe/react-stripe-js';
+
+   // Carga Stripe con la clave publicable desde el archivo .env
+   const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
+
+   const root = ReactDOM.createRoot(document.getElementById('root'));
+   root.render(
+     <React.StrictMode>
+       <Elements stripe={stripePromise}>
+         <App />
+       </Elements>
+     </React.StrictMode>
+   );
+   ```
+
+**2. Componente de Formulario de Pago (Nuevo Archivo)**
+   - **Acción:** Crea un nuevo archivo en `frontend/src/components/CheckoutForm.js`.
+   - **Contenido:** Pega todo este código en el nuevo archivo.
+
+   ```jsx
+   // frontend/src/components/CheckoutForm.js
+
+   import React, { useState } from 'react';
+   import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+   import { useMutation, gql } from '@apollo/client';
+
+   // GraphQL Mutation para crear el Payment Intent
+   const CREATE_PAYMENT_INTENT = gql`
+     mutation CreatePaymentIntent($orderId: ID!) {
+       createPaymentIntent(orderId: $orderId) {
+         clientSecret
+       }
+     }
+   `;
+
+   const cardElementOptions = {
+     style: {
+       base: {
+         fontSize: '16px',
+         color: '#424770',
+         '::placeholder': {
+           color: '#aab7c4',
+         },
+       },
+       invalid: {
+         color: '#9e2146',
+       },
+     },
+   };
+
+   const CheckoutForm = ({ orderId }) => {
+     const stripe = useStripe();
+     const elements = useElements();
+     const [error, setError] = useState(null);
+     const [processing, setProcessing] = useState(false);
+     const [succeeded, setSucceeded] = useState(false);
+
+     const [createPaymentIntent] = useMutation(CREATE_PAYMENT_INTENT);
+
+     const handleSubmit = async (event) => {
+       event.preventDefault();
+       setProcessing(true);
+
+       if (!stripe || !elements) {
+         setProcessing(false);
+         return;
+       }
+
+       try {
+         // 1. Obtener el clientSecret de tu backend
+         const { data } = await createPaymentIntent({ variables: { orderId } });
+         const clientSecret = data.createPaymentIntent.clientSecret;
+
+         // 2. Confirmar el pago con Stripe
+         const payload = await stripe.confirmCardPayment(clientSecret, {
+           payment_method: {
+             card: elements.getElement(CardElement),
+           },
+         });
+
+         if (payload.error) {
+           setError(`Pago fallido: ${payload.error.message}`);
+           setProcessing(false);
+         } else {
+           setError(null);
+           setProcessing(false);
+           setSucceeded(true);
+           // Opcional: Redirigir al usuario a una página de "Gracias"
+           // window.location.href = "/orden-confirmada";
+         }
+       } catch (e) {
+         setError(`Error al procesar el pago: ${e.message}`);
+         setProcessing(false);
+       }
+     };
+
+     return (
+       <form id="payment-form" onSubmit={handleSubmit}>
+         <h4>Introduce los datos de tu tarjeta</h4>
+         <CardElement id="card-element" options={cardElementOptions} />
+         <button disabled={processing || succeeded} id="submit">
+           <span id="button-text">
+             {processing ? "Procesando..." : "Pagar ahora"}
+           </span>
+         </button>
+         
+         {/* Muestra mensajes de error o éxito */}
+         {error && <div id="card-errors" role="alert" style={{ color: 'red' }}>{error}</div>}
+         {succeeded && <div style={{ color: 'green' }}>¡Pago exitoso!</div>}
+       </form>
+     );
+   };
+
+   export default CheckoutForm;
+   ```
+
+**3. Página de Checkout (Donde usas el formulario)**
+   - **Acción:** En tu componente de página de checkout (ej. `CheckoutPage.js`), importa y usa el `CheckoutForm`.
+   - **Ejemplo:**
+     ```jsx
+     import React from 'react';
+     import CheckoutForm from './CheckoutForm';
+     // Supongamos que obtienes el ID del pedido de alguna manera (ej. desde la URL o el estado)
+     const orderId = "tu-order-id-aqui"; 
+
+     function CheckoutPage() {
+       return (
+         <div>
+           <h2>Completa tu pago</h2>
+           <p>Pedido ID: {orderId}</p>
+           {/* ... otros detalles del pedido ... */}
+           <CheckoutForm orderId={orderId} />
+         </div>
+       );
+     }
+
+     export default CheckoutPage;
+     ```
+
+Con esta guía, tienes todo lo necesario para completar la implementación.

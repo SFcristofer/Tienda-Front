@@ -1,0 +1,2 @@
+Uncaught TypeError: onFileSelected is not a function
+    at handleFileChange (ImageUploader.jsx:11:7)

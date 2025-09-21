@@ -8,6 +8,7 @@ import StoresPage from './components/StoresPage';
 import Login from './components/Login';
 import Register from './components/Register';
 import ProfilePage from './components/ProfilePage';
+import CreateStorePage from './components/CreateStorePage';
 import { AuthProvider } from './context/AuthContext.jsx'; // Import AuthProvider
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/create-store" element={<CreateStorePage />} />
           </Routes>
         </main>
       </Router>

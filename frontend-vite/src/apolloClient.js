@@ -1,14 +1,14 @@
-import { ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client';
+import { ApolloClient, InMemoryCache } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
+import { createUploadLink } from 'apollo-upload-client';
 
-const httpLink = createHttpLink({
-  uri: 'http://localhost:4000/graphql', // Asume que tu backend GraphQL corre en este puerto
+// Replace createHttpLink with createUploadLink
+const uploadLink = createUploadLink({
+  uri: 'http://localhost:4000/graphql', // Your GraphQL endpoint
 });
 
 const authLink = setContext((_, { headers }) => {
-  // Obtén el token de autenticación del almacenamiento local si existe
   const token = localStorage.getItem('token');
-  // Retorna los encabezados al contexto para que httpLink los pueda leer
   return {
     headers: {
       ...headers,
@@ -18,7 +18,7 @@ const authLink = setContext((_, { headers }) => {
 });
 
 const client = new ApolloClient({
-  link: authLink.concat(httpLink),
+  link: authLink.concat(uploadLink), // Use uploadLink here
   cache: new InMemoryCache()
 });
 

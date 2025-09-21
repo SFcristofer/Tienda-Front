@@ -1,0 +1,99 @@
+
+Funciones implementadas en el backend:
+
+**API REST**
+
+*   **Autenticación (`/api/auth`)**
+    *   `POST /register`: Registrar un nuevo usuario.
+    *   `POST /login`: Autenticar un usuario y obtener un token de acceso.
+*   **Notificaciones (`/api/notifications`)**
+    *   `GET /`: Obtener todas las notificaciones para el usuario autenticado.
+    *   `PUT /:id/read`: Marcar una notificación como leída.
+*   **Pedidos (`/api/orders`)**
+    *   `GET /:id`: Obtener los detalles de un pedido por su ID.
+
+**API GraphQL**
+
+**Queries (Lectura de datos)**
+
+*   **Usuarios:**
+    *   `me`: Obtener la información del usuario autenticado.
+    *   `adminGetAllUsers`: (Admin) Obtener todos los usuarios.
+*   **Productos y Categorías:**
+    *   `getAllProducts`: Obtener todos los productos con filtros (categoría, precio, etc.).
+    *   `getProductById`: Obtener un producto por su ID.
+    *   `getAllCategories`: Obtener todas las categorías de productos.
+    *   `getProductsByCategory`: Obtener productos de una categoría específica.
+*   **Tiendas:**
+    *   `getAllStores`: Obtener todas las tiendas.
+    *   `getStoreById`: Obtener una tienda por su ID.
+*   **Pedidos:**
+    *   `customerOrders`: Obtener los pedidos del cliente autenticado.
+    *   `sellerOrders`: Obtener los pedidos de la tienda del vendedor autenticado.
+    *   `adminGetAllOrders`: (Admin) Obtener todos los pedidos.
+*   **Carrito de Compras:**
+    *   `myCart`: Obtener el carrito de compras del usuario.
+*   **Direcciones y Métodos de Pago:**
+    *   `myAddresses`: Obtener las direcciones del usuario.
+    *   `myPaymentMethods`: Obtener los métodos de pago del usuario.
+*   **Panel de Administración (Analytics):**
+    *   `adminGetDashboardStats`: Obtener estadísticas generales para el panel de administración.
+    *   `adminGetSalesData`: Obtener datos de ventas por período.
+    *   `adminGetUserRegistrations`: Obtener datos de registro de usuarios por período.
+    *   `adminGetTopSellingProducts`: Obtener los productos más vendidos.
+    *   `adminGetOrderStatusDistribution`: Obtener la distribución de estados de los pedidos.
+    *   `adminGetTopPerformingStores`: Obtener las tiendas con mejor rendimiento.
+    *   `adminGetCategorySales`: Obtener las ventas por categoría.
+    *   `adminGetProductsPublishedByStore`: Obtener la cantidad de productos publicados por tienda.
+    *   `adminGetProductsSold`: Obtener los productos vendidos.
+    *   `adminGetOrdersCreatedByStores`: Obtener los pedidos creados por tienda.
+    *   `adminGetOrdersCreatedByBuyers`: Obtener los pedidos creados por comprador.
+    *   `adminGetNewUsersCount`: Obtener el número de nuevos usuarios por período.
+    *   `adminGetNewStoresCount`: Obtener el número de nuevas tiendas por período.
+    *   `adminGetCancelledOrders`: Obtener los pedidos cancelados por período.
+
+**Mutations (Escritura y modificación de datos)**
+
+*   **Usuarios:**
+    *   `registerUser`: Registrar un nuevo usuario.
+    *   `loginUser`: Iniciar sesión.
+    *   `updateUser`: Actualizar la información de un usuario.
+    *   `becomeSeller`: Convertir a un usuario en vendedor.
+    *   `requestPasswordReset`: Solicitar un restablecimiento de contraseña.
+    *   `resetPassword`: Restablecer la contraseña.
+    *   `verifyEmail`: Verificar el correo electrónico de un usuario.
+    *   `deactivateAccount`: Desactivar una cuenta de usuario.
+    *   `deleteAccount`: Eliminar una cuenta de usuario.
+    *   `_setUserRole`: (Interno) Establecer el rol de un usuario.
+    *   `adminUpdateUserRole`: (Admin) Actualizar el rol de un usuario.
+    *   `adminUpdateUserStatus`: (Admin) Actualizar el estado de un usuario.
+*   **Productos y Categorías:**
+    *   `createProduct`: Crear un nuevo producto.
+    *   `updateProduct`: Actualizar un producto.
+    *   `deleteProduct`: Eliminar un producto.
+    *   `createCategory`: (Admin) Crear una nueva categoría.
+    *   `updateCategory`: (Admin) Actualizar una categoría.
+    *   `deleteCategory`: (Admin) Eliminar una categoría.
+*   **Tiendas:**
+    *   `createStore`: Crear una nueva tienda.
+    *   `updateStore`: Actualizar una tienda.
+    *   `adminUpdateStoreStatus`: (Admin) Actualizar el estado de una tienda.
+*   **Pedidos:**
+    *   `createOrder`: Crear un nuevo pedido.
+    *   `updateOrderStatus`: Actualizar el estado de un pedido.
+*   **Carrito de Compras:**
+    *   `addToCart`: Añadir un producto al carrito.
+    *   `removeFromCart`: Eliminar un producto del carrito.
+    *   `updateCartItemQuantity`: Actualizar la cantidad de un producto en el carrito.
+    *   `clearCart`: Vaciar el carrito.
+*   **Direcciones y Métodos de Pago:**
+    *   `createAddress`: Crear una nueva dirección.
+    *   `updateAddress`: Actualizar una dirección.
+    *   `deleteAddress`: Eliminar una dirección.
+    *   `createPaymentMethod`: Crear un nuevo método de pago.
+    *   `updatePaymentMethod`: Actualizar un método de pago.
+    *   `deletePaymentMethod`: Eliminar un método de pago.
+*   **Reseñas de Productos:**
+    *   `createProductReview`: Crear una reseña para un producto.
+*   **Imágenes:**
+    *   `uploadImage`: Subir una imagen.

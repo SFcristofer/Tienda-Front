@@ -1,0 +1,38 @@
+Instrucciones para obtener la salida de la consulta GraphQL:
+
+1.  **Iniciar el Servidor Backend:**
+    *   Abre tu terminal o símbolo del sistema.
+    *   Navega al directorio del backend: `cd C:\Users\crist\OneDrive\Desktop\Tienda online\backend`
+    *   Inicia el servidor: `npm start`
+    *   Asegúrate de que el servidor esté funcionando y sea accesible en `http://localhost:4000`.
+
+2.  **Acceder a GraphQL Playground/Altair/Insomnia:**
+    *   Una vez que el servidor backend esté en funcionamiento, abre tu navegador web y ve a `http://localhost:4000/graphql`.
+
+3.  **Ejecutar la consulta `getAllStores`:**
+    *   En el panel de consulta del IDE, pega la siguiente consulta GraphQL:
+        ```graphql
+        query GetAllStores {
+          getAllStores {
+            id
+            name
+            description
+            imageUrl
+            owner {
+              username
+            }
+            storeCategory {
+              name
+            }
+          }
+        }
+        ```
+    *   Haz clic en el botón "Play" (generalmente un icono de triángulo) para ejecutar la consulta.
+
+4.  **Copiar la Salida Completa:**
+    *   Copia la *respuesta completa* del panel de resultados en GraphQL Playground (incluyendo cualquier mensaje de error o los datos reales).
+
+5.  **Pegar la Salida Aquí:**
+    *   Pega la salida copiada directamente en nuestro chat para que pueda analizarla.
+
+Este paso es crucial para diagnosticar por qué las tiendas no se muestran. Sin esta salida, no puedo identificar la causa raíz del error 400.

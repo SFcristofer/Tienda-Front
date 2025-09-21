@@ -1,0 +1,89 @@
+
+> backend@1.0.0 start
+> node index.js
+
+[dotenv@17.2.1] injecting env (7) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[dotenv@17.2.1] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+(node:8484) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Executing (default): DROP TABLE IF EXISTS `Store_StoreCategories`;
+Executing (default): DROP TABLE IF EXISTS `StoreCategories`;
+Executing (default): DROP TABLE IF EXISTS `ProductReviews`;
+Executing (default): DROP TABLE IF EXISTS `PaymentMethods`;
+Executing (default): DROP TABLE IF EXISTS `OrderItems`;
+Executing (default): DROP TABLE IF EXISTS `Orders`;
+Executing (default): DROP TABLE IF EXISTS `Notifications`;
+Executing (default): DROP TABLE IF EXISTS `CartItems`;
+Executing (default): DROP TABLE IF EXISTS `Products`;
+Executing (default): DROP TABLE IF EXISTS `Stores`;
+Executing (default): DROP TABLE IF EXISTS `Categories`;
+Executing (default): DROP TABLE IF EXISTS `Carts`;
+Executing (default): DROP TABLE IF EXISTS `Addresses`;
+Executing (default): DROP TABLE IF EXISTS `Users`;
+Executing (default): PRAGMA foreign_keys = OFF
+Executing (default): DROP TABLE IF EXISTS `Addresses`;
+Executing (default): DROP TABLE IF EXISTS `Carts`;
+Executing (default): DROP TABLE IF EXISTS `CartItems`;
+Executing (default): DROP TABLE IF EXISTS `Categories`;
+Executing (default): DROP TABLE IF EXISTS `Notifications`;
+Executing (default): DROP TABLE IF EXISTS `Orders`;
+Executing (default): DROP TABLE IF EXISTS `OrderItems`;
+Executing (default): DROP TABLE IF EXISTS `PaymentMethods`;
+Executing (default): DROP TABLE IF EXISTS `Products`;
+Executing (default): DROP TABLE IF EXISTS `ProductReviews`;
+Executing (default): DROP TABLE IF EXISTS `Stores`;
+Executing (default): DROP TABLE IF EXISTS `StoreCategories`;
+Executing (default): DROP TABLE IF EXISTS `Users`;
+Executing (default): DROP TABLE IF EXISTS `Store_StoreCategories`;
+Executing (default): PRAGMA foreign_keys = ON
+Executing (default): DROP TABLE IF EXISTS `Users`;
+Executing (default): CREATE TABLE IF NOT EXISTS `Users` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `name` VARCHAR(255) NOT NULL, `email` VARCHAR(255) NOT NULL UNIQUE, `googleId` VARCHAR(255) UNIQUE, `password` VARCHAR(255) NOT NULL, `role` TEXT DEFAULT 'customer', `resetPasswordToken` VARCHAR(255), `resetPasswordExpires` DATETIME, `isVerified` TINYINT(1) DEFAULT 1, `verificationToken` VARCHAR(255), `verificationTokenExpires` DATETIME, `status` TEXT NOT NULL DEFAULT 'active', `avatarUrl` VARCHAR(255), `phoneNumber` VARCHAR(255), `createdAt` DATETIME NOT NULL, `updatedAt` DATETIME NOT NULL);
+Executing (default): PRAGMA INDEX_LIST(`Users`)
+Executing (default): PRAGMA INDEX_INFO(`sqlite_autoindex_Users_1`)
+Executing (default): PRAGMA INDEX_INFO(`sqlite_autoindex_Users_2`)
+Executing (default): DROP TABLE IF EXISTS `Addresses`;
+Executing (default): CREATE TABLE IF NOT EXISTS `Addresses` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `street` VARCHAR(255), `city` VARCHAR(255), `state` VARCHAR(255), `zipCode` VARCHAR(255), `country` VARCHAR(255), `phoneNumber` VARCHAR(255) NOT NULL, `isDefault` TINYINT(1), `createdAt` DATETIME NOT NULL, `updatedAt` DATETIME NOT NULL, `userId` INTEGER REFERENCES `Users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE);
+Executing (default): PRAGMA INDEX_LIST(`Addresses`)
+Executing (default): DROP TABLE IF EXISTS `Carts`;
+Executing (default): CREATE TABLE IF NOT EXISTS `Carts` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `userId` INTEGER NOT NULL UNIQUE REFERENCES `Users` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE, `createdAt` DATETIME NOT NULL, `updatedAt` DATETIME NOT NULL);
+Executing (default): PRAGMA INDEX_LIST(`Carts`)
+Executing (default): PRAGMA INDEX_INFO(`sqlite_autoindex_Carts_1`)
+Executing (default): DROP TABLE IF EXISTS `Categories`;
+Executing (default): CREATE TABLE IF NOT EXISTS `Categories` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `name` VARCHAR(255) NOT NULL UNIQUE, `createdAt` DATETIME NOT NULL, `updatedAt` DATETIME NOT NULL);       
+Executing (default): PRAGMA INDEX_LIST(`Categories`)
+Executing (default): PRAGMA INDEX_INFO(`sqlite_autoindex_Categories_1`)
+Executing (default): DROP TABLE IF EXISTS `Stores`;
+Executing (default): CREATE TABLE IF NOT EXISTS `Stores` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `name` VARCHAR(255) NOT NULL, `description` TEXT NOT NULL, `ownerId` INTEGER NOT NULL REFERENCES `Users` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE, `imageUrl` VARCHAR(255), `status` TEXT NOT NULL DEFAULT 'active', `street` VARCHAR(255), `city` VARCHAR(255) NOT NULL, `state` VARCHAR(255) NOT NULL, `zipCode` VARCHAR(255) NOT NULL, `country` VARCHAR(255), `phoneNumber` VARCHAR(255) NOT NULL, `contactEmail` VARCHAR(255) NOT NULL, `averageRating` FLOAT NOT NULL DEFAULT '0', `createdAt` DATETIME NOT NULL, `updatedAt` DATETIME NOT NULL);
+Executing (default): PRAGMA INDEX_LIST(`Stores`)
+Executing (default): DROP TABLE IF EXISTS `Products`;
+Executing (default): CREATE TABLE IF NOT EXISTS `Products` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `name` VARCHAR(255) NOT NULL, `description` TEXT NOT NULL, `price` FLOAT NOT NULL, `imageUrl` VARCHAR(255), `stock` INTEGER NOT NULL DEFAULT 0, `status` TEXT NOT NULL DEFAULT 'active', `createdAt` DATETIME NOT NULL, `updatedAt` DATETIME NOT NULL, `categoryId` INTEGER REFERENCES `Categories` (`id`) ON DELETE SET NULL ON UPDATE CASCADE, `storeId` INTEGER REFERENCES `Stores` (`id`) ON DELETE SET NULL ON UPDATE CASCADE);
+Executing (default): PRAGMA INDEX_LIST(`Products`)
+Executing (default): DROP TABLE IF EXISTS `CartItems`;
+Executing (default): CREATE TABLE IF NOT EXISTS `CartItems` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `cartId` INTEGER NOT NULL REFERENCES `Carts` (`id`) ON DELETE CASCADE ON UPDATE CASCADE, `productId` INTEGER NOT NULL REFERENCES `Products` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE, `quantity` INTEGER NOT NULL DEFAULT 1, `createdAt` DATETIME NOT NULL, `updatedAt` DATETIME NOT NULL);
+Executing (default): PRAGMA INDEX_LIST(`CartItems`)
+Executing (default): DROP TABLE IF EXISTS `Notifications`;
+Executing (default): CREATE TABLE IF NOT EXISTS `Notifications` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `userId` INTEGER NOT NULL REFERENCES `Users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE, `type` VARCHAR(255) NOT NULL, `message` TEXT NOT NULL, `isRead` TINYINT(1) NOT NULL DEFAULT 0, `relatedEntityId` INTEGER, `relatedEntityType` VARCHAR(255), `createdAt` DATETIME NOT NULL, `updatedAt` DATETIME NOT NULL);    
+Executing (default): PRAGMA INDEX_LIST(`Notifications`)
+Executing (default): DROP TABLE IF EXISTS `Orders`;
+Executing (default): CREATE TABLE IF NOT EXISTS `Orders` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `totalAmount` FLOAT NOT NULL, `status` TEXT NOT NULL DEFAULT 'payment_pending', `deliveryAddress` VARCHAR(255) NOT NULL, `storeId` INTEGER NOT NULL REFERENCES `Stores` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE, `createdAt` DATETIME NOT NULL, `updatedAt` DATETIME NOT NULL, `userId` INTEGER REFERENCES `Users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE);
+Executing (default): PRAGMA INDEX_LIST(`Orders`)
+Executing (default): DROP TABLE IF EXISTS `OrderItems`;
+Executing (default): CREATE TABLE IF NOT EXISTS `OrderItems` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `quantity` INTEGER NOT NULL, `priceAtOrder` FLOAT NOT NULL, `createdAt` DATETIME NOT NULL, `updatedAt` DATETIME NOT NULL, `orderId` INTEGER REFERENCES `Orders` (`id`) ON DELETE SET NULL ON UPDATE CASCADE, `productId` INTEGER REFERENCES `Products` (`id`) ON DELETE SET NULL ON UPDATE CASCADE);
+Executing (default): PRAGMA INDEX_LIST(`OrderItems`)
+Executing (default): DROP TABLE IF EXISTS `PaymentMethods`;
+Executing (default): CREATE TABLE IF NOT EXISTS `PaymentMethods` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `paymentMethodId` VARCHAR(255) NOT NULL UNIQUE, `brand` VARCHAR(255) NOT NULL, `last4` VARCHAR(4) NOT NULL, `isDefault` TINYINT(1) DEFAULT 0, `userId` INTEGER NOT NULL REFERENCES `Users` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE, `createdAt` DATETIME NOT NULL, `updatedAt` DATETIME NOT NULL);
+Executing (default): PRAGMA INDEX_LIST(`PaymentMethods`)
+Executing (default): PRAGMA INDEX_INFO(`sqlite_autoindex_PaymentMethods_1`)
+Executing (default): DROP TABLE IF EXISTS `ProductReviews`;
+Executing (default): CREATE TABLE IF NOT EXISTS `ProductReviews` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `rating` INTEGER NOT NULL, `comment` TEXT, `createdAt` DATETIME NOT NULL, `updatedAt` DATETIME NOT NULL, `productId` INTEGER REFERENCES `Products` (`id`) ON DELETE SET NULL ON UPDATE CASCADE, `userId` INTEGER REFERENCES `Users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE);
+Executing (default): PRAGMA INDEX_LIST(`ProductReviews`)
+Executing (default): DROP TABLE IF EXISTS `StoreCategories`;
+Executing (default): CREATE TABLE IF NOT EXISTS `StoreCategories` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `name` VARCHAR(255) NOT NULL UNIQUE, `createdAt` DATETIME NOT NULL, `updatedAt` DATETIME NOT NULL);  
+Executing (default): PRAGMA INDEX_LIST(`StoreCategories`)
+Executing (default): PRAGMA INDEX_INFO(`sqlite_autoindex_StoreCategories_1`)
+Executing (default): DROP TABLE IF EXISTS `Store_StoreCategories`;
+Executing (default): CREATE TABLE IF NOT EXISTS `Store_StoreCategories` (`createdAt` DATETIME NOT NULL, `updatedAt` DATETIME NOT NULL, `StoreId` INTEGER NOT NULL REFERENCES `Stores` (`id`) ON DELETE CASCADE ON UPDATE CASCADE, `StoreCategoryId` INTEGER NOT NULL REFERENCES `StoreCategories` (`id`) ON DELETE CASCADE ON UPDATE CASCADE, PRIMARY KEY (`StoreId`, `StoreCategoryId`));
+Executing (default): PRAGMA INDEX_LIST(`Store_StoreCategories`)
+Executing (default): PRAGMA INDEX_INFO(`sqlite_autoindex_Store_StoreCategories_1`)
+info: 🚀 Server ready at http://localhost:4000/graphql
+info: ::1 - - [23/Aug/2025:23:23:35 +0000] "OPTIONS /graphql HTTP/1.1" 204 0 "ht

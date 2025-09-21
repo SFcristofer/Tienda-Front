@@ -1,0 +1,135 @@
+Guía de Próximos Pasos para la Funcionalidad de Tiendas Cercanas
+
+Aquí tienes una guía detallada de lo que necesitas hacer para que la nueva funcionalidad de búsqueda de tiendas cercanas esté completamente operativa.
+
+----------------------------------------
+-- PASOS EN EL BACKEND
+----------------------------------------
+
+1. **REINICIAR EL SERVIDOR:**
+   - Es fundamental que detengas y vuelvas a iniciar tu servidor de backend. Esto cargará los cambios que hemos realizado en los modelos de la base de datos y la nueva lógica de la API.
+
+2. **ACTUALIZAR LAS COORDENADAS DE TUS TIENDAS:**
+   - Tus tiendas actuales en la base de datos tienen los campos `latitude` y `longitude` vacíos (con valor `null`). La nueva función solo encontrará tiendas que tengan coordenadas válidas.
+   - **¿Cómo obtener las coordenadas?** La forma más fácil es ir a Google Maps, buscar la dirección de tu tienda, hacer clic derecho sobre el marcador en el mapa y copiar las coordenadas.
+   - **¿Cómo actualizar la base de datos?** Puedes hacerlo directamente con un cliente de base de datos o crear un pequeño script. Por ejemplo, para una tienda con `id = 1`, la consulta SQL sería algo así:
+     ```sql
+     UPDATE "Stores" SET latitude = 40.7128, longitude = -74.0060 WHERE id = 1;
+     ```
+   - Repite este proceso para todas las tiendas que quieras que aparezcan en las búsquedas de proximidad.
+
+----------------------------------------
+-- GUÍA DE IMPLEMENTACIÓN EN EL FRONTEND (React)
+----------------------------------------
+
+El objetivo es: `Dirección del Usuario` -> `Coordenadas` -> `Llamada a nuestra API` -> `Mostrar Tiendas`.
+
+1. **OBTENER UNA CLAVE DE API DE GOOGLE MAPS:**
+   - Ve a la [Consola de Google Cloud](https://console.cloud.google.com/).
+   - Crea un nuevo proyecto (o selecciona uno existente).
+   - En el menú de navegación, ve a "APIs y servicios" -> "Biblioteca".
+   - Busca y habilita la **"Geocoding API"**.
+   - Ve a "APIs y servicios" -> "Credenciales" y crea una nueva "Clave de API".
+   - **IMPORTANTE:** Restringe tu clave de API para que solo pueda ser usada desde el dominio de tu aplicación web. Esto es una medida de seguridad crucial.
+   - Guarda esta clave, la necesitarás en tu archivo `.env` de React.
+
+2. **CONFIGURAR LA CLAVE EN TU PROYECTO REACT:**
+   - En la raíz de tu proyecto `frontend`, crea o edita el archivo `.env` y añade tu clave:
+     ```
+     REACT_APP_GOOGLE_MAPS_API_KEY="TU_CLAVE_DE_API_AQUI"
+     ```
+
+3. **INSTALAR LA LIBRERÍA DE GOOGLE MAPS:**
+   - Para facilitar la integración, te recomiendo usar el cargador oficial de Google.
+     ```bash
+     npm install @googlemaps/js-api-loader
+     ```
+
+4. **CREAR EL COMPONENTE DE BÚSQUEDA:**
+   - Crea un componente en React (por ejemplo, `NearbySearch.js`) que contenga un formulario para que el usuario ingrese su dirección.
+
+   ```jsx
+   // Ejemplo de estructura del componente
+   import React, { useState } from 'react';
+   import { useLazyQuery } from '@apollo/client';
+   import { gql } from '@apollo/client'; // O importa desde tu archivo de queries
+   import { Loader } from '@googlemaps/js-api-loader';
+
+   // Define tu query de GraphQL aquí
+   const GET_NEARBY_STORES_QUERY = gql`
+     query GetNearbyStores($latitude: Float!, $longitude: Float!, $radius: Float) {
+       getNearbyStores(latitude: $latitude, longitude: $longitude, radius: $radius) {
+         id
+         name
+         description
+         distance
+       }
+     }
+   `;
+
+   function NearbySearch() {
+     const [address, setAddress] = useState('');
+     const [getStores, { loading, data, error }] = useLazyQuery(GET_NEARBY_STORES_QUERY);
+
+     const handleSearch = async () => {
+       // 1. Cargar la API de Google Maps
+       const loader = new Loader({
+         apiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
+         version: 'weekly',
+       });
+
+       const { Geocoder } = await loader.importLibrary('geocoding');
+       const geocoder = new Geocoder();
+
+       // 2. Convertir dirección a coordenadas
+       geocoder.geocode({ address: address }, (results, status) => {
+         if (status === 'OK') {
+           const { lat, lng } = results[0].geometry.location;
+           const latitude = lat();
+           const longitude = lng();
+
+           // 3. Llamar a tu API de GraphQL con las coordenadas
+           getStores({ variables: { latitude, longitude, radius: 10 } }); // Radio de 10km
+         } else {
+           alert('La geocodificación falló por la siguiente razón: ' + status);
+         }
+       });
+     };
+
+     return (
+       <div>
+         <input
+           type="text"
+           value={address}
+           onChange={(e) => setAddress(e.target.value)}
+           placeholder="Ingresa tu dirección"
+         />
+         <button onClick={handleSearch} disabled={loading}>
+           {loading ? 'Buscando...' : 'Buscar Tiendas Cercanas'}
+         </button>
+
+         {/* 4. Mostrar los resultados */}
+         {error && <p>Error: {error.message}</p>}
+         {data && (
+           <div>
+             <h3>Tiendas Encontradas:</h3>
+             <ul>
+               {data.getNearbyStores.map(store => (
+                 <li key={store.id}>
+                   <strong>{store.name}</strong> - a {store.distance.toFixed(2)} km de distancia
+                 </li>
+               ))}
+             </ul>
+           </div>
+         )}
+       </div>
+     );
+   }
+
+   export default NearbySearch;
+   ```
+
+5. **INTEGRAR EL COMPONENTE:**
+   - Finalmente, importa y usa tu nuevo componente `NearbySearch` en la página donde quieras que aparezca la funcionalidad (por ejemplo, en tu página de inicio o en una página dedicada a tiendas).
+
+Siguiendo estos pasos, tendrás la funcionalidad completamente integrada en tu aplicación.
