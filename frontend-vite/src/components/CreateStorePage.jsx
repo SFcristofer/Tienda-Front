@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { useMutation, gql } from '@apollo/client';
+import { useMutation, useQuery, gql } from '@apollo/client';
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -9,11 +9,26 @@ import {
   Box,
   Paper,
   CircularProgress,
-  Alert
+  Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  OutlinedInput,
+  Chip
 } from '@mui/material';
 import AuthContext from '../context/AuthContext.jsx';
 import AddressAutocomplete from './AddressAutocomplete.jsx';
 import ImageUploader from './ImageUploader.jsx';
+
+const GET_STORE_CATEGORIES = gql`
+  query GetAllStoreCategories {
+    getAllStoreCategories {
+      id
+      name
+    }
+  }
+`;
 
 const CREATE_STORE_MUTATION = gql`
   mutation CreateStore($name: String!, $description: String!, $imageFile: Upload, $addressInput: CreateAddressInput!, $storeCategoryIds: [ID!]) {
@@ -31,6 +46,8 @@ function CreateStorePage() {
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState(null);
   const [imageFile, setImageFile] = useState(null);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const { data: categoriesData, loading: categoriesLoading, error: categoriesError } = useQuery(GET_STORE_CATEGORIES);
   const [createStore, { loading, error }] = useMutation(CREATE_STORE_MUTATION);
 
   const handlePlaceSelected = (placeDetails) => {
@@ -65,7 +82,8 @@ function CreateStorePage() {
           name,
           description,
           imageFile,
-          addressInput, // Use the prepared address input
+          addressInput,
+          storeCategoryIds: selectedCategories, // Pass selected categories
         },
       });
       navigate('/profile'); // Redirect to profile page on success
@@ -113,6 +131,49 @@ function CreateStorePage() {
               <Typography variant="caption">Lat: {address.latitude || 'N/A'}, Lon: {address.longitude || 'N/A'}</Typography>
             </Box>
           )}
+
+          <FormControl fullWidth margin="normal">
+            <InputLabel id="store-categories-label">Categorías de la Tienda</InputLabel>
+            <Select
+              labelId="store-categories-label"
+              id="store-categories"
+              multiple
+              value={selectedCategories}
+              onChange={(e) => setSelectedCategories(e.target.value)}
+              input={<OutlinedInput id="select-multiple-chip" label="Categorías de la Tienda" />}
+              renderValue={(selected) => (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {selected.map((value) => (
+                    <Chip key={value} label={categoriesData.getAllStoreCategories.find(cat => cat.id === value)?.name || value} />
+                  ))}
+                </Box>
+              )}
+              MenuProps={{
+                PaperProps: {
+                  style: {
+                    maxHeight: 224,
+                    width: 250,
+                  },
+                },
+              }}
+            >
+              {categoriesLoading ? (
+                <MenuItem disabled><CircularProgress size={20} /></MenuItem>
+              ) : categoriesError ? (
+                <MenuItem disabled>Error al cargar categorías</MenuItem>
+              ) : (
+                categoriesData?.getAllStoreCategories.map((category) => (
+                  <MenuItem
+                    key={category.id}
+                    value={category.id}
+                  >
+                    {category.name}
+                  </MenuItem>
+                ))
+              )}
+            </Select>
+          </FormControl>
+
           <Typography variant="h6" sx={{ mt: 2 }}>Imagen de la Tienda</Typography>
           <ImageUploader onFileSelected={handleImageSelected} />
           {error && <Alert severity="error" sx={{ mt: 2 }}>{error.message}</Alert>}

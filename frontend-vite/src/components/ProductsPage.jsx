@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import MuiAlert from '@mui/material/Alert';
 import { useCart } from '../context/CartContext';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 
 const SnackbarAlert = React.forwardRef(function SnackbarAlert(props, ref) {
   return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
@@ -63,6 +64,7 @@ function ProductsPage() {
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
   const { addToCart } = useCart();
+  const navigate = useNavigate(); // Initialize useNavigate
 
   const { loading: categoriesLoading, error: categoriesError, data: categoriesData } = useQuery(GET_ALL_CATEGORIES);
 
@@ -94,6 +96,10 @@ function ProductsPage() {
       return;
     }
     setSnackbarOpen(false);
+  };
+
+  const handleViewProduct = (productId) => {
+    navigate(`/products/${productId}`);
   };
 
   if (categoriesError) return <Alert severity="error">Error al cargar categorías: {categoriesError.message}</Alert>;
@@ -158,19 +164,23 @@ function ProductsPage() {
           ) : (
             data.getAllProducts.map(product => (
               <Grid item key={product.id} xs={12} sm={6} md={4} lg={3}>
-                <Card sx={{
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  borderRadius: '16px',
-                  overflow: 'hidden', // Safeguard against content stretching
-                  maxWidth: 200, // Set max width as requested
-                  transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
-                  '&:hover': {
-                    transform: 'translateY(-5px)',
-                    boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
-                  }
-                }}>
+                <Card 
+                  sx={{
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    borderRadius: '16px',
+                    overflow: 'hidden', // Safeguard against content stretching
+                    maxWidth: 200, // Set max width as requested
+                    transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+                    '&:hover': {
+                      transform: 'translateY(-5px)',
+                      boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
+                      cursor: 'pointer', // Indicate it's clickable
+                    }
+                  }}
+                  onClick={() => handleViewProduct(product.id)} // Add onClick handler
+                >
                   <CardMedia
                     component="img"
                     height="160"

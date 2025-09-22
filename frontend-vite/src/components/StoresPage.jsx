@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { gql, useQuery } from '@apollo/client';
 import {
-  Container, Grid, Card, CardMedia, CardContent, CardActions, Button, Typography, Box, TextField, 
+  Container, Grid, Card, CardMedia, CardContent, CardActions, Button, Typography, Box,
   CircularProgress, Alert
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 
-const GET_NEARBY_STORES = gql`
-  query GetNearbyStores($latitude: Float!, $longitude: Float!, $radius: Float) {
-    getNearbyStores(latitude: $latitude, longitude: $longitude, radius: $radius) {
+const GET_ALL_STORES = gql`
+  query GetAllStores {
+    getAllStores {
       id
       name
       description
@@ -18,77 +19,41 @@ const GET_NEARBY_STORES = gql`
       storeCategories {
         name
       }
-      distance
+      averageRating
+      address {
+        street
+        city
+        state
+        country
+      }
     }
   }
 `;
 
 function StoresPage() {
-  const [location, setLocation] = useState({ latitude: null, longitude: null });
-  const [radius, setRadius] = useState(20); // Default radius in km
-  const [locationError, setLocationError] = useState('');
+  const navigate = useNavigate();
 
-  const { loading, error, data } = useQuery(GET_NEARBY_STORES, {
-    variables: { 
-      latitude: location.latitude,
-      longitude: location.longitude,
-      radius 
-    },
-    skip: !location.latitude || !location.longitude, // Skip query if no coordinates
-  });
+  const { loading, error, data } = useQuery(GET_ALL_STORES);
 
-  const handleFindStores = () => {
-    setLocationError('');
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-        },
-        (err) => {
-          setLocationError(`Error al obtener la ubicación: ${err.message}`);
-        }
-      );
-    } else {
-      setLocationError('La geolocalización no es soportada por este navegador.');
-    }
+  const handleViewStore = (storeId) => {
+    navigate(`/stores/${storeId}`);
   };
 
   return (
     <Container sx={{ py: 4 }}>
       <Typography variant="h4" component="h1" gutterBottom>
-        Tiendas Cercanas
+        Todas las Tiendas
       </Typography>
-
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4, flexWrap: 'wrap' }}>
-        <Button variant="contained" onClick={handleFindStores}>
-          Buscar tiendas cerca de mí
-        </Button>
-        <TextField
-          type="number"
-          label="Radio (km)"
-          variant="outlined"
-          value={radius}
-          onChange={(e) => setRadius(parseFloat(e.target.value))}
-          sx={{ width: '150px' }}
-        />
-      </Box>
-
-      {locationError && <Alert severity="error" sx={{ mb: 2 }}>{locationError}</Alert>}
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>
       ) : error ? (
         <Alert severity="error">Error al cargar tiendas: {error.message}</Alert>
-      ) : !location.latitude || !location.longitude ? (
-        <Alert severity="info">Haz clic en el botón para encontrar tiendas cercanas a tu ubicación.</Alert>
-      ) : data && data.getNearbyStores.length === 0 ? (
-        <Alert severity="warning">No se encontraron tiendas en el radio especificado.</Alert>
+      ) : data && data.getAllStores.length === 0 ? (
+        <Alert severity="info">No se encontraron tiendas.</Alert>
       ) : (
         <Grid container spacing={4}>
-          {data?.getNearbyStores.map(store => (
+          {data?.getAllStores.map(store => (
             <Grid item key={store.id} xs={12} sm={6} md={4}>
               <Card sx={{
                   height: '100%',
@@ -122,14 +87,19 @@ function StoresPage() {
                   <Typography variant="body2" color="text.secondary" gutterBottom>
                     {store.description}
                   </Typography>
-                  {store.distance != null && (
+                  {store.address && (
+                    <Typography variant="body2" color="text.secondary">
+                      {store.address.street}, {store.address.city}, {store.address.state}, {store.address.country}
+                    </Typography>
+                  )}
+                  {store.averageRating != null && (
                     <Typography variant="body1" sx={{ mt: 1, fontWeight: 'bold' }}>
-                      A {store.distance.toFixed(2)} km de distancia
+                      Rating: {store.averageRating.toFixed(1)}
                     </Typography>
                   )}
                 </CardContent>
                 <CardActions sx={{ p: 2, pt: 0, mt: 'auto' }}>
-                  <Button size="small" variant="contained" fullWidth>Ver Tienda</Button>
+                  <Button size="small" variant="contained" fullWidth onClick={() => handleViewStore(store.id)}>Ver Tienda</Button>
                 </CardActions>
               </Card>
             </Grid>

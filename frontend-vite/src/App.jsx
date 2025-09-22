@@ -9,7 +9,9 @@ import Login from './components/Login';
 import Register from './components/Register';
 import ProfilePage from './components/ProfilePage';
 import CreateStorePage from './components/CreateStorePage';
-import CartPage from './components/CartPage'; // Import CartPage
+import CartPage from './components/CartPage'; // CartPage imported
+import StoreDetailPage from './components/StoreDetailPage'; // Import StoreDetailPage
+import ProductDetailPage from './components/ProductDetailPage'; // Import ProductDetailPage
 function App() {
   return (
     <Router>
@@ -18,7 +20,9 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePageContent />} />
           <Route path="/products" element={<ProductsPage />} />
+          <Route path="/products/:id" element={<ProductDetailPage />} /> {/* New route for ProductDetailPage */}
           <Route path="/stores" element={<StoresPage />} />
+          <Route path="/stores/:id" element={<StoreDetailPage />} /> {/* New route for StoreDetailPage */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/profile" element={<ProfilePage />} />
