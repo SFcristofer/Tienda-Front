@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import NotificationsIcon from '@mui/icons-material/Notifications'; // Import NotificationsIcon
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import HomeIcon from '@mui/icons-material/Home';
@@ -27,11 +28,13 @@ import LoginIcon from '@mui/icons-material/Login';
 import AppRegistrationIcon from '@mui/icons-material/AppRegistration';
 import LogoutIcon from '@mui/icons-material/Logout';
 import AccountBoxIcon from '@mui/icons-material/AccountBox';
+import { useCart } from '../context/CartContext';
 
 import logo from '../assets/logo.png';
 
 function Navbar() {
   const { isLoggedIn, user, logout } = useContext(AuthContext);
+  const { cartItemCount } = useCart();
   const navigate = useNavigate();
 
   // State for user menu
@@ -126,8 +129,13 @@ function Navbar() {
 
           {/* Cart and User/Auth Section */}
           <Box sx={{ flexGrow: 0, display: 'flex', alignItems: 'center' }}>
+            <IconButton size="large" color="inherit">
+              <Badge badgeContent={0} color="error"> {/* TODO: Connect to NotificationContext */}
+                <NotificationsIcon />
+              </Badge>
+            </IconButton>
             <IconButton component={RouterLink} to="/cart" size="large" color="inherit">
-              <Badge badgeContent={0} color="error"> {/* TODO: Connect to CartContext */}
+              <Badge badgeContent={cartItemCount} color="error"> {/* TODO: Connect to CartContext */}
                 <ShoppingCartIcon />
               </Badge>
             </IconButton>

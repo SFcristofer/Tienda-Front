@@ -578,8 +578,11 @@ const SitesPanel = () => (
   </>
 );
 
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper as MuiPaper } from '@mui/material';
+
 const MyStoresPanel = ({ stores, selectedStoreId, setSelectedStoreId, refetch: refetchMe }) => {
-  const [selectedView, setSelectedView] = useState('products');
+  const [selectedView, setSelectedView] = useState('products'); // 'products' (cards) or 'orders'
+  const [productViewMode, setProductViewMode] = useState('cards'); // 'cards' or 'table'
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
 
@@ -632,6 +635,12 @@ const MyStoresPanel = ({ stores, selectedStoreId, setSelectedStoreId, refetch: r
     setSelectedView(newValue);
   };
 
+  const handleProductViewModeChange = (event, newValue) => {
+    if (newValue !== null) { // Prevent unselecting all tabs
+      setProductViewMode(newValue);
+    }
+  };
+
   if (!stores || stores.length === 0) {
     return (
       <>
@@ -656,62 +665,103 @@ const MyStoresPanel = ({ stores, selectedStoreId, setSelectedStoreId, refetch: r
   const selectedStore = stores.find(store => store.id === selectedStoreId);
   const ordersForSelectedStore = ordersData?.sellerOrders.filter(order => order.store.id === selectedStoreId) || [];
 
-  const renderProducts = () => (
-    <>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-        <Button variant="contained" onClick={handleOpenCreateForm}>
-          Crear Producto
-        </Button>
-      </Box>
-      <Grid container spacing={4} sx={{ mt: 1 }}>
-        {selectedStore?.products && selectedStore.products.length > 0 ? (
-          selectedStore.products.map(product => (
-            <Grid item key={product.id} xs={12} sm={6} md={4}>
-              <Card sx={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                borderRadius: '16px',
-                overflow: 'hidden', // Safeguard against content stretching
-                maxWidth: 200, // Set max width as requested
-                transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
-                '&:hover': {
-                  transform: 'translateY(-5px)',
-                  boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
-                }
-              }}>
-                <CardMedia
-                  component="img"
-                  height="160"
-                  image={product.imageUrl || '/images/product-placeholder.svg'}
-                  alt={product.name}
-                  sx={{ 
-                    borderTopLeftRadius: '16px', 
-                    borderTopRightRadius: '16px', 
-                    objectFit: 'contain', 
-                    width: '100%' 
-                  }}
-                />
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Typography gutterBottom variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
-                    {product.name}
-                  </Typography>
-                  <Typography variant="h5" color="text.primary" sx={{ fontWeight: 'bold' }}>
-                    ${product.price.toFixed(2)}
-                  </Typography>
-                </CardContent>
-                <CardActions>
+  const renderProductsCards = () => (
+    <Grid container spacing={4} sx={{ mt: 1 }}>
+      {selectedStore?.products && selectedStore.products.length > 0 ? (
+        selectedStore.products.map(product => (
+          <Grid item key={product.id} xs={12} sm={6} md={4}>
+            <Card sx={{
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: '16px',
+              overflow: 'hidden', // Safeguard against content stretching
+              maxWidth: 200, // Set max width as requested
+              transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+              '&:hover': {
+                transform: 'translateY(-5px)',
+                boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
+              }
+            }}>
+              <CardMedia
+                component="img"
+                height="160"
+                image={product.imageUrl || '/images/product-placeholder.svg'}
+                alt={product.name}
+                sx={{ 
+                  borderTopLeftRadius: '16px', 
+                  borderTopRightRadius: '16px', 
+                  objectFit: 'contain', 
+                  width: '100%' 
+                }}
+              />
+              <CardContent sx={{ flexGrow: 1 }}>
+                <Typography gutterBottom variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
+                  {product.name}
+                </Typography>
+                <Typography variant="h5" color="text.primary" sx={{ fontWeight: 'bold' }}>
+                  ${product.price.toFixed(2)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Stock: {product.stock}
+                </Typography>
+              </CardContent>
+              <CardActions>
+                <IconButton size="small" onClick={() => handleOpenEditForm(product)}><EditIcon /></IconButton>
+                <IconButton size="small" onClick={() => handleDeleteProduct(product.id)}><DeleteIcon /></IconButton>
+              </CardActions>
+            </Card>
+          </Grid>
+        ))
+      ) : (
+        <Typography sx={{ mt: 1, ml: 2 }}>Esta tienda aún no tiene productos.</Typography>
+      )}
+    </Grid>
+  );
+
+  const renderProductsTable = () => (
+    <TableContainer component={MuiPaper}>
+      <Table sx={{ minWidth: 650 }} aria-label="tabla de productos">
+        <TableHead>
+          <TableRow>
+            <TableCell>Imagen</TableCell>
+            <TableCell>Nombre</TableCell>
+            <TableCell>Descripción</TableCell>
+            <TableCell align="right">Precio</TableCell>
+            <TableCell align="right">Stock</TableCell>
+            <TableCell align="center">Acciones</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {selectedStore?.products && selectedStore.products.length > 0 ? (
+            selectedStore.products.map((product) => (
+              <TableRow
+                key={product.id}
+                sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+              >
+                <TableCell component="th" scope="row">
+                  <img src={product.imageUrl || '/images/product-placeholder.svg'} alt={product.name} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: '4px' }} />
+                </TableCell>
+                <TableCell>{product.name}</TableCell>
+                <TableCell>{product.description}</TableCell>
+                <TableCell align="right">${product.price.toFixed(2)}</TableCell>
+                <TableCell align="right">{product.stock}</TableCell>
+                <TableCell align="center">
                   <IconButton size="small" onClick={() => handleOpenEditForm(product)}><EditIcon /></IconButton>
                   <IconButton size="small" onClick={() => handleDeleteProduct(product.id)}><DeleteIcon /></IconButton>
-                </CardActions>
-              </Card>
-            </Grid>
-          ))
-        ) : (
-          <Typography sx={{ mt: 1, ml: 2 }}>Esta tienda aún no tiene productos.</Typography>
-        )}
-      </Grid>
-    </>
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={6} align="center">
+                Esta tienda aún no tiene productos.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
   );
 
   const renderOrders = () => {
@@ -768,9 +818,27 @@ const MyStoresPanel = ({ stores, selectedStoreId, setSelectedStoreId, refetch: r
               <Tab label="Pedidos" value="orders" />
             </Tabs>
           </Box>
-          <Box sx={{ p: { xs: 1, sm: 2, md: 3 }, mt: 2 }}>
-            {selectedView === 'products' ? renderProducts() : renderOrders()}
-          </Box>
+          {selectedView === 'products' && (
+            <Box sx={{ p: { xs: 1, sm: 2, md: 3 }, mt: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                <Button variant="contained" onClick={handleOpenCreateForm}>
+                  Crear Producto
+                </Button>
+              </Box>
+              <Tabs value={productViewMode} onChange={handleProductViewModeChange} aria-label="vista de productos">
+                <Tab label="Tarjetas" value="cards" />
+                <Tab label="Tabla" value="table" />
+              </Tabs>
+              <Box sx={{ mt: 2 }}>
+                {productViewMode === 'cards' ? renderProductsCards() : renderProductsTable()}
+              </Box>
+            </Box>
+          )}
+          {selectedView === 'orders' && (
+            <Box sx={{ p: { xs: 1, sm: 2, md: 3 }, mt: 2 }}>
+              {renderOrders()}
+            </Box>
+          )}
         </Box>
       )}
       <ProductForm

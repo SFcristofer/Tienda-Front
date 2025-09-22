@@ -9,26 +9,24 @@ import Login from './components/Login';
 import Register from './components/Register';
 import ProfilePage from './components/ProfilePage';
 import CreateStorePage from './components/CreateStorePage';
-import { AuthProvider } from './context/AuthContext.jsx'; // Import AuthProvider
-
+import CartPage from './components/CartPage'; // Import CartPage
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Navbar />
-        <main>
-          <Routes>
-            <Route path="/" element={<HomePageContent />} />
-            <Route path="/products" element={<ProductsPage />} />
-            <Route path="/stores" element={<StoresPage />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/create-store" element={<CreateStorePage />} />
-          </Routes>
-        </main>
-      </Router>
-    </AuthProvider>
+    <Router>
+      <Navbar />
+      <main>
+        <Routes>
+          <Route path="/" element={<HomePageContent />} />
+          <Route path="/products" element={<ProductsPage />} />
+          <Route path="/stores" element={<StoresPage />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/create-store" element={<CreateStorePage />} />
+          <Route path="/cart" element={<CartPage />} /> {/* Add CartPage route */}
+        </Routes>
+      </main>
+    </Router>
   );
 }
 

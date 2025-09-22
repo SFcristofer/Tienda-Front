@@ -14,3 +14,22 @@ export const ME_QUERY = gql`
     }
   }
 `;
+
+export const GET_MY_CART = gql`
+  query MyCart {
+    myCart {
+      id
+      items {
+        id
+        quantity
+        product {
+          id
+          name
+          price
+          imageUrl
+          stock
+        }
+      }
+    }
+  }
+`;

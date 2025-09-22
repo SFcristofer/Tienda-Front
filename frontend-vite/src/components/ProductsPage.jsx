@@ -2,8 +2,14 @@ import React, { useState } from 'react';
 import { gql, useQuery } from '@apollo/client';
 import {
   Container, Grid, Card, CardMedia, CardContent, CardActions, Button, Typography, Box, TextField, 
-  Select, MenuItem, FormControl, InputLabel, CircularProgress, Alert
+  Select, MenuItem, FormControl, InputLabel, CircularProgress, Alert, Snackbar
 } from '@mui/material';
+import MuiAlert from '@mui/material/Alert';
+import { useCart } from '../context/CartContext';
+
+const SnackbarAlert = React.forwardRef(function SnackbarAlert(props, ref) {
+  return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
+});
 
 const GET_ALL_PRODUCTS = gql`
   query GetAllProducts(
@@ -52,6 +58,11 @@ function ProductsPage() {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+
+  const { addToCart } = useCart();
 
   const { loading: categoriesLoading, error: categoriesError, data: categoriesData } = useQuery(GET_ALL_CATEGORIES);
 
@@ -63,6 +74,27 @@ function ProductsPage() {
       categoryId: selectedCategory || null,
     },
   });
+
+  const handleAddToCart = async (product) => {
+    try {
+      await addToCart(product, 1); // Add 1 quantity by default
+      setSnackbarMessage(`${product.name} añadido al carrito.`);
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (err) {
+      setSnackbarMessage(`Error al añadir ${product.name} al carrito.`);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      console.error('Error adding to cart:', err);
+    }
+  };
+
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbarOpen(false);
+  };
 
   if (categoriesError) return <Alert severity="error">Error al cargar categorías: {categoriesError.message}</Alert>;
 
@@ -165,7 +197,7 @@ function ProductsPage() {
                           ${product.price.toFixed(2)}
                         </Typography>
                       </Box>
-                      <Button size="small" variant="contained">Añadir</Button>
+                      <Button size="small" variant="contained" onClick={() => handleAddToCart(product)}>Añadir</Button>
                   </CardActions>
                 </Card>
               </Grid>
@@ -173,6 +205,11 @@ function ProductsPage() {
           )}
         </Grid>
       )}
+      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleCloseSnackbar}>
+        <SnackbarAlert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </SnackbarAlert>
+      </Snackbar>
     </Container>
   );
 }
