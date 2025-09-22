@@ -5,7 +5,7 @@ import AuthContext from '../context/AuthContext.jsx';
 import {
   Container, Paper, Grid, Tabs, Tab, Box, Typography, TextField,
   Button, Avatar, List, ListItem, ListItemText, Divider, IconButton,
-  useMediaQuery, useTheme, Card, CardContent, CardActions, InputAdornment, CircularProgress, Alert, Chip
+  useMediaQuery, useTheme, Card, CardContent, CardActions, CardMedia, InputAdornment, CircularProgress, Alert, Chip
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
@@ -15,8 +15,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import WebIcon from '@mui/icons-material/Web';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
-
 import StorefrontIcon from '@mui/icons-material/Storefront';
+import ProductForm from './ProductForm'; // Import the new component
 
 const ME_QUERY = gql`
   query Me {
@@ -37,11 +37,22 @@ const ME_QUERY = gql`
         products {
           id
           name
+          description
           price
+          stock
           imageUrl
+          category {
+            id
+          }
         }
       }
     }
+  }
+`;
+
+const DELETE_PRODUCT_MUTATION = gql`
+  mutation DeleteProduct($id: ID!) {
+    deleteProduct(id: $id)
   }
 `;
 
@@ -567,12 +578,51 @@ const SitesPanel = () => (
   </>
 );
 
-const MyStoresPanel = ({ stores, selectedStoreId, setSelectedStoreId }) => {
-  const [selectedView, setSelectedView] = useState('products'); // 'products' or 'orders'
+const MyStoresPanel = ({ stores, selectedStoreId, setSelectedStoreId, refetch: refetchMe }) => {
+  const [selectedView, setSelectedView] = useState('products');
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+
   const { data: ordersData, loading: ordersLoading, error: ordersError } = useQuery(SELLER_ORDERS_QUERY, {
     variables: { storeId: selectedStoreId },
     skip: !selectedStoreId,
   });
+
+  const [deleteProduct] = useMutation(DELETE_PRODUCT_MUTATION, {
+    onCompleted: () => {
+      refetchMe(); // Refetch user data to update product list
+    },
+    onError: (error) => {
+      console.error("Failed to delete product", error);
+      // You might want to show an alert to the user here
+    }
+  });
+
+  const handleOpenCreateForm = () => {
+    setEditingProduct(null);
+    setIsFormOpen(true);
+  };
+
+  const handleOpenEditForm = (product) => {
+    setEditingProduct(product);
+    setIsFormOpen(true);
+  };
+
+  const handleCloseForm = () => {
+    setIsFormOpen(false);
+    setEditingProduct(null);
+  };
+
+  const handleSave = () => {
+    handleCloseForm();
+    refetchMe();
+  };
+
+  const handleDeleteProduct = (productId) => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar este producto?')) {
+      deleteProduct({ variables: { id: productId } });
+    }
+  };
 
   const handleStoreChange = (event, newValue) => {
     setSelectedStoreId(newValue);
@@ -607,22 +657,61 @@ const MyStoresPanel = ({ stores, selectedStoreId, setSelectedStoreId }) => {
   const ordersForSelectedStore = ordersData?.sellerOrders.filter(order => order.store.id === selectedStoreId) || [];
 
   const renderProducts = () => (
-    <Grid container spacing={2} sx={{ mt: 1 }}>
-      {selectedStore?.products && selectedStore.products.length > 0 ? (
-        selectedStore.products.map(product => (
-          <Grid item key={product.id} xs={12} sm={6} md={4}>
-            <Card>
-              <CardContent>
-                <Typography variant="subtitle1">{product.name}</Typography>
-                <Typography variant="body2" color="text.secondary">${product.price.toFixed(2)}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))
-      ) : (
-        <Typography sx={{ mt: 1, ml: 2 }}>Esta tienda aún no tiene productos.</Typography>
-      )}
-    </Grid>
+    <>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+        <Button variant="contained" onClick={handleOpenCreateForm}>
+          Crear Producto
+        </Button>
+      </Box>
+      <Grid container spacing={4} sx={{ mt: 1 }}>
+        {selectedStore?.products && selectedStore.products.length > 0 ? (
+          selectedStore.products.map(product => (
+            <Grid item key={product.id} xs={12} sm={6} md={4}>
+              <Card sx={{
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                borderRadius: '16px',
+                overflow: 'hidden', // Safeguard against content stretching
+                maxWidth: 200, // Set max width as requested
+                transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+                '&:hover': {
+                  transform: 'translateY(-5px)',
+                  boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
+                }
+              }}>
+                <CardMedia
+                  component="img"
+                  height="160"
+                  image={product.imageUrl || '/images/product-placeholder.svg'}
+                  alt={product.name}
+                  sx={{ 
+                    borderTopLeftRadius: '16px', 
+                    borderTopRightRadius: '16px', 
+                    objectFit: 'contain', 
+                    width: '100%' 
+                  }}
+                />
+                <CardContent sx={{ flexGrow: 1 }}>
+                  <Typography gutterBottom variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
+                    {product.name}
+                  </Typography>
+                  <Typography variant="h5" color="text.primary" sx={{ fontWeight: 'bold' }}>
+                    ${product.price.toFixed(2)}
+                  </Typography>
+                </CardContent>
+                <CardActions>
+                  <IconButton size="small" onClick={() => handleOpenEditForm(product)}><EditIcon /></IconButton>
+                  <IconButton size="small" onClick={() => handleDeleteProduct(product.id)}><DeleteIcon /></IconButton>
+                </CardActions>
+              </Card>
+            </Grid>
+          ))
+        ) : (
+          <Typography sx={{ mt: 1, ml: 2 }}>Esta tienda aún no tiene productos.</Typography>
+        )}
+      </Grid>
+    </>
   );
 
   const renderOrders = () => {
@@ -684,6 +773,13 @@ const MyStoresPanel = ({ stores, selectedStoreId, setSelectedStoreId }) => {
           </Box>
         </Box>
       )}
+      <ProductForm
+        open={isFormOpen}
+        onClose={handleCloseForm}
+        onSave={handleSave}
+        product={editingProduct}
+        storeId={selectedStoreId}
+      />
     </>
   );
 };
@@ -929,7 +1025,7 @@ function ProfilePage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const { data, loading, error } = useQuery(ME_QUERY, {
+  const { data, loading, error, refetch } = useQuery(ME_QUERY, {
     skip: !isLoggedIn, // Skip query if user is not logged in
     fetchPolicy: 'network-only', // Always fetch fresh data
   });
@@ -955,7 +1051,7 @@ function ProfilePage() {
   let tabConfig = [...baseTabs];
   if (user?.role === 'seller') {
     const sellerTabs = [
-      { label: 'Mis Tiendas', icon: <StorefrontIcon />, component: <MyStoresPanel stores={user.stores} selectedStoreId={selectedStoreId} setSelectedStoreId={setSelectedStoreId} /> },
+      { label: 'Mis Tiendas', icon: <StorefrontIcon />, component: <MyStoresPanel stores={user.stores} selectedStoreId={selectedStoreId} setSelectedStoreId={setSelectedStoreId} refetch={refetch} /> },
       { label: 'Mis Sitios', icon: <WebIcon />, component: <SitesPanel /> },
       { label: 'Analítica', icon: <AnalyticsIcon />, component: <AnalyticsPanel stores={user.stores} selectedStoreId={selectedStoreId} /> },
     ];

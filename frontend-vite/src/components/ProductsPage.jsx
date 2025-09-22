@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
 import { gql, useQuery } from '@apollo/client';
+import {
+  Container, Grid, Card, CardMedia, CardContent, CardActions, Button, Typography, Box, TextField, 
+  Select, MenuItem, FormControl, InputLabel, CircularProgress, Alert
+} from '@mui/material';
 
 const GET_ALL_PRODUCTS = gql`
   query GetAllProducts(
@@ -60,67 +64,116 @@ function ProductsPage() {
     },
   });
 
-  if (loading || categoriesLoading) return <p>Cargando productos...</p>;
-  if (error) return <p>Error al cargar productos: {error.message}</p>;
-  if (categoriesError) return <p>Error al cargar categorías: {categoriesError.message}</p>;
+  if (categoriesError) return <Alert severity="error">Error al cargar categorías: {categoriesError.message}</Alert>;
 
   return (
-    <div className="products-page-container">
-      <h2>Explora Nuestros Productos</h2>
+    <Container sx={{ py: 4 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Explora Nuestros Productos
+      </Typography>
 
-      <div className="filters-container">
-        <input
-          type="text"
-          placeholder="Buscar productos..."
+      <Box sx={{ display: 'flex', gap: 2, mb: 4, flexWrap: 'wrap' }}>
+        <TextField
+          label="Buscar productos..."
+          variant="outlined"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="filter-input"
+          sx={{ flexGrow: 1, minWidth: '200px' }}
         />
-        <input
+        <TextField
           type="number"
-          placeholder="Precio mínimo"
+          label="Precio mínimo"
+          variant="outlined"
           value={minPrice}
           onChange={(e) => setMinPrice(e.target.value)}
-          className="filter-input"
+          sx={{ width: '150px' }}
         />
-        <input
+        <TextField
           type="number"
-          placeholder="Precio máximo"
+          label="Precio máximo"
+          variant="outlined"
           value={maxPrice}
           onChange={(e) => setMaxPrice(e.target.value)}
-          className="filter-input"
+          sx={{ width: '150px' }}
         />
-        <select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="filter-select"
-        >
-          <option value="">Todas las categorías</option>
-          {categoriesData.getAllCategories.map(category => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-      </div>
+        <FormControl sx={{ minWidth: '200px' }}>
+          <InputLabel>Categoría</InputLabel>
+          <Select
+            value={selectedCategory}
+            label="Categoría"
+            onChange={(e) => setSelectedCategory(e.target.value)}
+          >
+            <MenuItem value=""><em>Todas</em></MenuItem>
+            {categoriesData?.getAllCategories.map(category => (
+              <MenuItem key={category.id} value={category.id}>
+                {category.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
 
-      <div className="product-grid">
-        {data.getAllProducts.length === 0 ? (
-          <p>No se encontraron productos con los filtros aplicados.</p>
-        ) : (
-          data.getAllProducts.map(product => (
-            <div key={product.id} className="product-card">
-              <img src={product.imageUrl || 'https://via.placeholder.com/150'} alt={product.name} className="product-image" />
-              <h3 className="product-name">{product.name}</h3>
-              <p className="product-price">${product.price.toFixed(2)}</p>
-              <p className="product-store">Tienda: {product.store.name}</p>
-              <p className="product-category">Categoría: {product.category ? product.category.name : 'N/A'}</p>
-              <button className="add-to-cart-button">Añadir al Carrito</button>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
+      {loading || categoriesLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>
+      ) : error ? (
+        <Alert severity="error">Error al cargar productos: {error.message}</Alert>
+      ) : (
+        <Grid container spacing={4}>
+          {data.getAllProducts.length === 0 ? (
+            <Grid item xs={12}>
+              <Typography>No se encontraron productos con los filtros aplicados.</Typography>
+            </Grid>
+          ) : (
+            data.getAllProducts.map(product => (
+              <Grid item key={product.id} xs={12} sm={6} md={4} lg={3}>
+                <Card sx={{
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  borderRadius: '16px',
+                  overflow: 'hidden', // Safeguard against content stretching
+                  maxWidth: 200, // Set max width as requested
+                  transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+                  '&:hover': {
+                    transform: 'translateY(-5px)',
+                    boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
+                  }
+                }}>
+                  <CardMedia
+                    component="img"
+                    height="160"
+                    image={product.imageUrl || '/images/product-placeholder.svg'}
+                    alt={product.name}
+                    sx={{ 
+                      borderTopLeftRadius: '16px', 
+                      borderTopRightRadius: '16px', 
+                      objectFit: 'contain', 
+                      width: '100%' 
+                    }}
+                  />
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Typography gutterBottom variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
+                      {product.name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Vendido por: {product.store.name}
+                    </Typography>
+                  </CardContent>
+                  <CardActions sx={{ p: 2, pt: 0, mt: 'auto' }}>
+                     <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                          ${product.price.toFixed(2)}
+                        </Typography>
+                      </Box>
+                      <Button size="small" variant="contained">Añadir</Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))
+          )}
+        </Grid>
+      )}
+    </Container>
   );
 }
 

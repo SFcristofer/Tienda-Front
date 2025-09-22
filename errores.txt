@@ -1,2 +1,6 @@
-Uncaught TypeError: onFileSelected is not a function
-    at handleFileChange (ImageUploader.jsx:11:7)
+HomePageContent.jsx:3  Uncaught SyntaxError: The requested module '/src/components/ProductList.jsx?t=1758499490821' does not provide an export named 'default' (at HomePageContent.jsx:3:8)
+[NEW] Explain Console errors by using Copilot in Edge: click
+         
+         to explain an error. 
+        Learn more
+        Don't show again
