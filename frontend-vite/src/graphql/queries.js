@@ -28,6 +28,10 @@ export const GET_MY_CART = gql`
           price
           imageUrl
           stock
+          store {
+            id
+            name
+          }
         }
       }
     }

@@ -1,0 +1,85 @@
+Instrucciones para Implementar Stripe Connect para Vendedores
+
+Este documento detalla los pasos necesarios para integrar el proceso de onboarding de vendedores con Stripe Connect en tu marketplace.
+
+**Objetivo:** Permitir que los vendedores conecten sus cuentas de Stripe para recibir pagos, y que la plataforma pueda procesar pagos y transferir fondos a los vendedores.
+
+---
+
+**Análisis de Componentes Clave:**
+
+*   **Backend:**
+    *   **Mutación `createPaymentIntent`:** Ya existe y verifica `store.stripeAccountId`. Si falta, lanza `SELLER_NOT_CONFIGURED`.
+    *   **Stripe Connect Account Creation:** Necesita una forma de crear cuentas de Stripe Connect para vendedores y generar enlaces de onboarding.
+    *   **Webhook para `account.updated`:** El webhook existente (`/api/stripe-webhook`) debe manejar eventos de actualización de cuentas para guardar el `stripeAccountId`.
+
+*   **Frontend:**
+    *   **UI del Perfil/Dashboard del Vendedor:** Necesita un botón o sección para iniciar el proceso de conexión de Stripe.
+    *   **Página de Finalización de Onboarding:** Una página para manejar la redirección desde Stripe después del onboarding.
+
+---
+
+**Pasos de Implementación Detallados:**
+
+**Paso 1: Implementar el Resolver `createStripeAccountLink` (Backend)**
+
+Este resolver es crucial para iniciar el flujo de onboarding del vendedor.
+
+*   **Archivo:** `backend/graphql/resolvers.js`
+*   **Funcionalidad:**
+    1.  **Autenticación:** Asegúrate de que el usuario esté autenticado y tenga el rol de 'seller' (usando `isSeller(context)`).
+    2.  **Verificar Tienda:** Busca la tienda del vendedor (`Store.findByPk(storeId)`). Asegúrate de que la tienda exista y pertenezca al vendedor autenticado.
+    3.  **Crear Cuenta Stripe (si no existe):**
+        *   Si `store.stripeAccountId` está vacío o nulo, llama a `stripe.accounts.create` para crear una nueva cuenta de Stripe Connect para el vendedor.
+        *   Configura el `type` de la cuenta (se recomienda 'express' para la mayoría de los marketplaces).
+        *   Proporciona información básica como `country`, `email` (del vendedor o de la tienda), `capabilities` (ej. `card_payments`, `transfers`), y `business_profile`.
+        *   Guarda el `accountId` devuelto por Stripe en el campo `store.stripeAccountId` de tu base de datos.
+    4.  **Generar Enlace de Onboarding:**
+        *   Llama a `stripe.accountLinks.create` usando el `accountId` (ya sea el existente o el recién creado).
+        *   Define `refresh_url` (a dónde redirigir si el enlace expira) y `return_url` (a dónde redirigir después de completar el onboarding). Estas URLs deben ser rutas en tu frontend.
+        *   Establece `type: 'account_onboarding'`.
+    5.  **Retornar URL:** El resolver debe retornar la `url` generada por `stripe.accountLinks.create`.
+
+**Paso 2: Implementar la UI de Onboarding del Vendedor (Frontend)**
+
+Esto permitirá al vendedor iniciar el proceso de conexión.
+
+*   **Archivo:** `frontend-vite/src/components/SellerDashboard.jsx` (o `UserProfile.jsx` si es donde manejas el perfil del vendedor).
+*   **Funcionalidad:**
+    1.  **Botón:** Añade un botón visible (ej. "Conectar Cuenta Stripe" o "Configurar Pagos").
+    2.  **Mutación GraphQL:** Utiliza `useMutation` para llamar a la mutación `createStripeAccountLink` que creaste en el backend.
+    3.  **Redirección:** Cuando la mutación retorne la URL del enlace de cuenta, redirige al usuario a esa URL (ej. `window.location.href = url;`).
+    4.  **Manejo de Estados:** Muestra estados de carga y errores si la mutación falla.
+
+**Paso 3: Extender el Webhook de Stripe (Backend)**
+
+Esto es crucial para que tu base de datos se mantenga sincronizada con el estado de la cuenta de Stripe del vendedor.
+
+*   **Archivo:** `backend/index.js` (donde está definido tu endpoint `/api/stripe-webhook`).
+*   **Funcionalidad:**
+    1.  **Manejar Evento `account.updated`:** Dentro de tu manejador de webhook, añade un `case` para `event.type === 'account.updated'`.
+    2.  **Extraer `stripeAccountId`:** Obtén el `id` de la cuenta de Stripe del objeto `event.data.object`.
+    3.  **Actualizar `Store`:** Busca la tienda correspondiente en tu base de datos (usando el `stripeAccountId` o un `metadata` que hayas asociado al crear la cuenta) y actualiza su estado (ej. `store.charges_enabled`, `store.payouts_enabled`) y guarda el `stripeAccountId` si aún no lo tienes.
+    4.  **Verificación de Firma:** Asegúrate de que tu webhook esté verificando la firma de Stripe para seguridad.
+
+**Paso 4: Crear Página de Finalización de Onboarding (Frontend)**
+
+Esta página manejará la redirección de Stripe después de que el vendedor complete (o cancele) el proceso de onboarding.
+
+*   **Archivo:** `frontend-vite/src/components/StripeOnboardingCompletePage.jsx` (crea este nuevo archivo).
+*   **Ruta:** Añade una ruta para esta página en `frontend-vite/src/App.jsx` (ej. `/stripe-onboarding-complete`).
+*   **Funcionalidad:**
+    1.  **Leer Parámetros de URL:** Stripe redirigirá con parámetros de consulta que indican el estado (ej. `success=true` o `success=false`).
+    2.  **Mostrar Mensaje:** Basado en estos parámetros, muestra un mensaje de éxito o fracaso al vendedor.
+    3.  **Opcional: Consultar Backend:** Podrías hacer una consulta al backend para verificar el estado actual de la cuenta de Stripe del vendedor y mostrar información más detallada.
+
+---
+
+**Consideraciones Adicionales:**
+
+*   **Entorno de Prueba:** Asegúrate de usar tus claves de prueba de Stripe (`pk_test_` y `sk_test_`) durante el desarrollo.
+*   **URLs de Redirección:** Las `refresh_url` y `return_url` deben ser URLs accesibles desde Stripe (en desarrollo, esto significa que tu servidor de desarrollo debe ser accesible públicamente, por ejemplo, usando `ngrok` o `localtunnel` para probar webhooks y redirecciones).
+*   **Manejo de Errores:** Implementa un manejo robusto de errores en cada paso.
+*   **Experiencia de Usuario:** Guía al vendedor claramente a través del proceso.
+
+Espero que estas instrucciones detalladas te sean de gran ayuda. ¡Avísame si tienes más preguntas o si necesitas ayuda con alguno de estos pasos!

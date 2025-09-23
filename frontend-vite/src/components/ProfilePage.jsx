@@ -17,6 +17,8 @@ import WebIcon from '@mui/icons-material/Web';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import ProductForm from './ProductForm'; // Import the new component
+import StripeOnboarding from './StripeOnboarding'; // Import StripeOnboarding
+import { StoreEditModal } from './StoreEditModal'; // Import StoreEditModal
 
 const ME_QUERY = gql`
   query Me {
@@ -34,6 +36,17 @@ const ME_QUERY = gql`
         name
         description
         imageUrl
+        stripeAccountId
+        contactEmail
+        phoneNumber
+        address {
+          id
+          street
+          city
+          state
+          zipCode
+          country
+        }
         products {
           id
           name
@@ -420,8 +433,10 @@ const AddressesPanel = () => {
   const { data, loading, error, refetch } = useQuery(MY_ADDRESSES_QUERY);
   const [createAddress] = useMutation(CREATE_ADDRESS_MUTATION);
   const [deleteAddress] = useMutation(DELETE_ADDRESS_MUTATION);
+  const [updateAddress] = useMutation(UPDATE_ADDRESS_MUTATION);
 
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingAddress, setEditingAddress] = useState(null); // State for the address being edited
   const [newAddress, setNewAddress] = useState({
     street: '', city: '', state: '', zipCode: '', country: '', phoneNumber: '',
     latitude: null, longitude: null, isDefault: false, description: ''
@@ -437,8 +452,9 @@ const AddressesPanel = () => {
   };
 
   const handlePlaceSelected = (placeDetails) => {
-    setNewAddress({
-      ...newAddress,
+    const targetState = editingAddress ? setEditingAddress : setNewAddress;
+    targetState(prev => ({
+      ...prev,
       description: placeDetails.description,
       street: placeDetails.street,
       city: placeDetails.city,
@@ -447,19 +463,36 @@ const AddressesPanel = () => {
       country: placeDetails.country,
       latitude: placeDetails.latitude,
       longitude: placeDetails.longitude,
-    });
+    }));
   };
 
-  const handleAddAddress = async () => {
+  const handleSaveAddress = async () => {
     try {
-      const { description, ...input } = newAddress;
-      await createAddress({ variables: { input } });
+      if (editingAddress) {
+        const { description, __typename, ...updateInput } = editingAddress;
+        await updateAddress({ variables: { input: updateInput } });
+        setEditingAddress(null);
+      } else {
+        const { description, ...createInput } = newAddress;
+        await createAddress({ variables: { input: createInput } });
+        setNewAddress({ street: '', city: '', state: '', zipCode: '', country: '', phoneNumber: '', latitude: null, longitude: null, isDefault: false, description: '' });
+      }
       refetch();
       setShowAddForm(false);
-      setNewAddress({ street: '', city: '', state: '', zipCode: '', country: '', phoneNumber: '', latitude: null, longitude: null, isDefault: false, description: '' });
     } catch (err) {
-      console.error('Error adding address:', err);
+      console.error('Error saving address:', err);
     }
+  };
+
+  const handleEditClick = (address) => {
+    setEditingAddress({ ...address });
+    setShowAddForm(true);
+  };
+
+  const handleCancel = () => {
+    setShowAddForm(false);
+    setEditingAddress(null);
+    setNewAddress({ street: '', city: '', state: '', zipCode: '', country: '', phoneNumber: '', latitude: null, longitude: null, isDefault: false, description: '' });
   };
 
   const handleDeleteAddress = async (id) => {
@@ -478,29 +511,53 @@ const AddressesPanel = () => {
       <List>
         {addresses.map(address => (
           <Paper key={address.id} sx={{ mb: 2, p: 2, boxShadow: 1, borderRadius: 1 }}>
-            <ListItem secondaryAction={<IconButton edge="end" aria-label="delete" onClick={() => handleDeleteAddress(address.id)}><DeleteIcon /></IconButton>}>
+            <ListItem 
+              secondaryAction={
+                <Box>
+                  <IconButton edge="end" aria-label="edit" onClick={() => handleEditClick(address)}>
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteAddress(address.id)}>
+                    <DeleteIcon />
+                  </IconButton>
+                </Box>
+              }>
               <ListItemText primary={`${address.street}, ${address.city}`} secondary={`${address.state}, ${address.zipCode}, ${address.country}`} />
             </ListItem>
           </Paper>
         ))}
       </List>
       {!showAddForm ? (
-        <Button variant="contained" sx={{ mt: 2 }} onClick={() => setShowAddForm(true)}>Añadir Nueva Dirección</Button>
+        <Button variant="contained" sx={{ mt: 2 }} onClick={() => { setShowAddForm(true); setEditingAddress(null); }}>Añadir Nueva Dirección</Button>
       ) : (
         <Box sx={{ mt: 3, p: 3, border: '1px solid #ccc', borderRadius: '8px' }}>
-          <Typography variant="h6" gutterBottom>Nueva Dirección</Typography>
+          <Typography variant="h6" gutterBottom>{editingAddress ? 'Editar Dirección' : 'Nueva Dirección'}</Typography>
           <AddressAutocomplete onPlaceSelected={handlePlaceSelected} />
-          {newAddress.description && (
+          
+          {/* Display selected address details */}
+          {(editingAddress?.street || newAddress.description) && (
             <Box my={2}>
               <Typography variant="subtitle1">Dirección Seleccionada:</Typography>
-              <Typography>{newAddress.description}</Typography>
-              <Typography variant="caption">Lat: {newAddress.latitude || 'N/A'}, Lon: {newAddress.longitude || 'N/A'}</Typography>
+              <Typography>{editingAddress ? `${editingAddress.street}, ${editingAddress.city}` : newAddress.description}</Typography>
             </Box>
           )}
-          <TextField fullWidth label="Número de Teléfono (Opcional)" name="phoneNumber" value={newAddress.phoneNumber} onChange={handlePhoneNumberChange} margin="normal" />
+
+          <TextField 
+            fullWidth 
+            label="Número de Teléfono (Opcional)" 
+            name="phoneNumber" 
+            value={editingAddress ? editingAddress.phoneNumber : newAddress.phoneNumber} 
+            onChange={(e) => {
+              const targetState = editingAddress ? setEditingAddress : setNewAddress;
+              targetState(prev => ({ ...prev, phoneNumber: e.target.value }))
+            }}
+            margin="normal" 
+          />
           <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-            <Button variant="contained" onClick={handleAddAddress} disabled={!newAddress.latitude}>Guardar Dirección</Button>
-            <Button variant="outlined" onClick={() => setShowAddForm(false)}>Cancelar</Button>
+            <Button variant="contained" onClick={handleSaveAddress} disabled={editingAddress ? !editingAddress.latitude : !newAddress.latitude}>
+              {editingAddress ? 'Guardar Cambios' : 'Guardar Dirección'}
+            </Button>
+            <Button variant="outlined" onClick={handleCancel}>Cancelar</Button>
           </Box>
         </Box>
       )}
@@ -585,6 +642,8 @@ const MyStoresPanel = ({ stores, selectedStoreId, setSelectedStoreId, refetch: r
   const [productViewMode, setProductViewMode] = useState('cards'); // 'cards' or 'table'
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [storeToEdit, setStoreToEdit] = useState(null);
 
   const { data: ordersData, loading: ordersLoading, error: ordersError } = useQuery(SELLER_ORDERS_QUERY, {
     variables: { storeId: selectedStoreId },
@@ -805,6 +864,9 @@ const MyStoresPanel = ({ stores, selectedStoreId, setSelectedStoreId, refetch: r
             <Tab key={store.id} label={store.name} value={store.id} />
           ))}
         </Tabs>
+        <Button onClick={() => { setStoreToEdit(selectedStore); setIsEditModalOpen(true); }} variant="outlined" sx={{ ml: 2, whiteSpace: 'nowrap' }} disabled={!selectedStoreId}>
+          Editar Tienda
+        </Button>
         <Button component={RouterLink} to="/create-store" variant="contained" sx={{ ml: 2, whiteSpace: 'nowrap' }}>
           Crear Nueva Tienda
         </Button>
@@ -812,6 +874,9 @@ const MyStoresPanel = ({ stores, selectedStoreId, setSelectedStoreId, refetch: r
 
       {selectedStore && (
         <Box sx={{ width: '100%', mt: 2 }}>
+          <Box sx={{ p: { xs: 1, sm: 2, md: 3 }, mb: 2, border: '1px solid #eee', borderRadius: '8px' }}>
+            <StripeOnboarding store={selectedStore} />
+          </Box>
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
             <Tabs value={selectedView} onChange={handleViewChange} aria-label="sub-pestañas de vista">
               <Tab label="Productos" value="products" />
@@ -847,6 +912,12 @@ const MyStoresPanel = ({ stores, selectedStoreId, setSelectedStoreId, refetch: r
         onSave={handleSave}
         product={editingProduct}
         storeId={selectedStoreId}
+      />
+      <StoreEditModal 
+        open={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        store={storeToEdit}
+        refetch={refetchMe}
       />
     </>
   );

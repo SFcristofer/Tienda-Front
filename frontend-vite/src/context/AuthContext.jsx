@@ -1,11 +1,51 @@
 import React, { createContext, useState, useEffect } from 'react';
-import { jwtDecode } from 'jwt-decode'; // Make sure to install jwt-decode: npm install jwt-decode
+import { jwtDecode } from 'jwt-decode';
+import { useQuery, gql } from '@apollo/client';
+
+const GET_ME_WITH_ADDRESSES = gql`
+  query GetMeWithAddresses {
+    me {
+      id
+      name
+      email
+      role
+      isVerified
+      addresses {
+        id
+        street
+        city
+        state
+        zipCode
+        country
+        isDefault
+        phoneNumber
+      }
+    }
+  }
+`;
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token'));
+
+  const { data, loading, error, refetch } = useQuery(GET_ME_WITH_ADDRESSES, {
+    skip: !token, // Skip query if no token
+    onCompleted: (queryData) => {
+      if (queryData?.me) {
+        setUser(queryData.me);
+      } else {
+        setUser(null);
+      }
+    },
+    onError: (queryError) => {
+      console.error("Error fetching user data:", queryError);
+      setUser(null);
+      // Optionally logout if there's an error fetching user data
+      // logout();
+    },
+  });
 
   useEffect(() => {
     if (token) {
@@ -15,7 +55,8 @@ export const AuthProvider = ({ children }) => {
         if (decodedUser.exp * 1000 < Date.now()) {
           logout();
         } else {
-          setUser(decodedUser.user); // Assuming your token has a 'user' object
+          // Trigger refetch of user data from GraphQL if token is valid
+          refetch();
         }
       } catch (error) {
         console.error("Error decoding token:", error);
@@ -24,7 +65,7 @@ export const AuthProvider = ({ children }) => {
     } else {
       setUser(null);
     }
-  }, [token]);
+  }, [token, refetch]);
 
   const login = (newToken) => {
     localStorage.setItem('token', newToken);
@@ -40,7 +81,7 @@ export const AuthProvider = ({ children }) => {
   const isLoggedIn = !!user;
 
   return (
-    <AuthContext.Provider value={{ user, isLoggedIn, login, logout, token }}>
+    <AuthContext.Provider value={{ user, isLoggedIn, login, logout, token, loadingUser: loading }}>
       {children}
     </AuthContext.Provider>
   );

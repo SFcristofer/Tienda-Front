@@ -75,3 +75,9 @@ export const CLEAR_CART = gql`
     }
   }
 `;
+
+export const CREATE_STRIPE_ACCOUNT_LINK = gql`
+  mutation CreateStripeAccountLink($storeId: ID!, $refreshUrl: String!, $returnUrl: String!) {
+    createStripeAccountLink(storeId: $storeId, refreshUrl: $refreshUrl, returnUrl: $returnUrl)
+  }
+`;

@@ -12,6 +12,8 @@ import CreateStorePage from './components/CreateStorePage';
 import CartPage from './components/CartPage'; // CartPage imported
 import StoreDetailPage from './components/StoreDetailPage'; // Import StoreDetailPage
 import ProductDetailPage from './components/ProductDetailPage'; // Import ProductDetailPage
+import CheckoutPage from './components/CheckoutPage'; // Import CheckoutPage
+import OrderConfirmationPage from './components/OrderConfirmationPage'; // Import OrderConfirmationPage
 function App() {
   return (
     <Router>
@@ -28,6 +30,8 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/create-store" element={<CreateStorePage />} />
           <Route path="/cart" element={<CartPage />} /> {/* Add CartPage route */}
+          <Route path="/checkout" element={<CheckoutPage />} /> {/* New route for CheckoutPage */}
+          <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} /> {/* New route for OrderConfirmationPage */}
         </Routes>
       </main>
     </Router>
